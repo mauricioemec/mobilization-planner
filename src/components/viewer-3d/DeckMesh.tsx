@@ -1,6 +1,7 @@
 import { Html } from '@react-three/drei'
 import type { Vessel, VesselBarrier, DeckLoadZone } from '../../types/database'
 import { DECK_HEIGHT, BULWARK_H, BULWARK_W, toScene } from './sceneHelpers'
+import { HullMesh } from './HullMesh'
 
 type Props = {
   vessel: Vessel
@@ -19,6 +20,9 @@ export function DeckMesh({ vessel, barriers, deckLoadZones, showBarriers, showLo
 
   return (
     <group>
+      {/* Vessel hull — tapered box below deck, waterline (Y=0) at mid-hull height */}
+      <HullMesh length={L} width={W} />
+
       {/* Deck surface */}
       <mesh position={[cx, DECK_HEIGHT, cz]} receiveShadow>
         <boxGeometry args={[L, 0.2, W]} />

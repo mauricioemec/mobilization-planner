@@ -366,13 +366,29 @@ export async function seedDemoData(): Promise<SeedResult> {
       console.log('[seed]   Placement added:', p.label)
     }
 
-    // ── Step 7: RAO data ─────────────────────────────────────────────────────
-    console.log('[seed] Step 7: inserting RAO data…')
+    // ── Step 7: Copy vessel RAOs into project ────────────────────────────────
+    console.log('[seed] Step 7: copying vessel RAOs from Seven Seas into project…')
 
-    const raoRows = RAO_ENTRIES.map((e) => ({ ...e, project_id: project.id }))
+    const { data: vesselRaos, error: raoFetchErr } = await supabase
+      .from('vessel_rao_entry')
+      .select('*')
+      .eq('vessel_id', sevenSeas.id)
+    if (raoFetchErr) return { ok: false, error: `[vessel_rao_entry fetch] ${raoFetchErr.message}` }
+
+    const raoRows = (vesselRaos ?? []).map((e) => ({
+      wave_direction_deg: e.wave_direction_deg,
+      wave_period_s: e.wave_period_s,
+      heave_amplitude_m_per_m: e.heave_amplitude_m_per_m,
+      heave_phase_deg: e.heave_phase_deg,
+      roll_amplitude_deg_per_m: e.roll_amplitude_deg_per_m,
+      roll_phase_deg: e.roll_phase_deg,
+      pitch_amplitude_deg_per_m: e.pitch_amplitude_deg_per_m,
+      pitch_phase_deg: e.pitch_phase_deg,
+      project_id: project.id,
+    }))
     const raoErr = await insertMany('rao_entry', raoRows)
     if (raoErr) return { ok: false, error: raoErr }
-    console.log('[seed] RAO entries inserted.')
+    console.log('[seed] Project RAO entries copied from vessel (', raoRows.length, 'entries).')
 
     // ── Step 8: Scatter diagram ──────────────────────────────────────────────
     console.log('[seed] Step 8: inserting scatter diagram…')
