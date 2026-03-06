@@ -4,6 +4,7 @@ import { LayoutDashboard, Map, Calculator, Box, FileText } from 'lucide-react'
 import { useProjectStore } from '../../stores/useProjectStore'
 import { Skeleton } from '../../components/ui/skeleton'
 import { loadEquipmentCountsByProject } from '../../lib/supabase/projectEquipmentService'
+import { ChatPanel } from '../../components/chat/ChatPanel'
 
 type SidebarLink = {
   to: string
@@ -123,6 +124,9 @@ export default function ProjectWorkspace() {
       <div className="flex flex-1 flex-col overflow-auto">
         <Outlet />
       </div>
+
+      {/* ── AI Chat ── */}
+      {id && <ChatPanel projectId={id} />}
     </div>
   )
 }
