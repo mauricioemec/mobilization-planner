@@ -79,13 +79,15 @@ export default function EquipmentEditorPage() {
       {/* Split layout */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left panel — 40% — 3D preview */}
-        <div className="w-2/5 shrink-0 border-r border-gray-200">
-          <Equipment3DPreview
-            length={length}
-            width={width}
-            height={height}
-            geometryType={geometryType}
-          />
+        <div className="w-2/5 shrink-0 border-r border-gray-200 p-4">
+          <div className="h-full rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+            <Equipment3DPreview
+              length={length}
+              width={width}
+              height={height}
+              geometryType={geometryType}
+            />
+          </div>
         </div>
 
         {/* Right panel — 60% — form + calculated properties */}

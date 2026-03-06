@@ -159,7 +159,7 @@ export default function ProjectListPage() {
 
       <div className="flex-1 overflow-auto p-6">
         {isLoading ? (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="rounded-lg border border-gray-200 bg-white p-5">
                 <Skeleton className="h-5 w-3/4" />
@@ -195,7 +195,7 @@ export default function ProjectListPage() {
             )}
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {projects.map((project) => (
               <ProjectCard
                 key={project.id}

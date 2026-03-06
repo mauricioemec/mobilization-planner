@@ -90,13 +90,15 @@ export default function VesselEditorPage() {
       {/* Split layout */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left panel — 40% — 2D deck preview */}
-        <div className="w-2/5 shrink-0 border-r border-gray-200">
-          <DeckPreviewCanvas
-            values={values}
-            barriers={barriers}
-            zones={zones}
-            cranePoints={cranePoints}
-          />
+        <div className="w-2/5 shrink-0 border-r border-gray-200 p-4">
+          <div className="h-full rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+            <DeckPreviewCanvas
+              values={values}
+              barriers={barriers}
+              zones={zones}
+              cranePoints={cranePoints}
+            />
+          </div>
         </div>
 
         {/* Right panel — 60% — tabbed form */}
