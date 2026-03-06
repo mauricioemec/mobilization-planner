@@ -57,6 +57,26 @@ export async function loadAnalysisResult(
   }
 }
 
+/**
+ * Return the subset of the given project_equipment IDs that have a splash zone result.
+ * Used by the overview page to show an "Analyzed" status column without N+1 queries.
+ */
+export async function loadAnalyzedEquipmentIds(
+  projectEquipmentIds: string[],
+): ServiceResult<string[]> {
+  if (projectEquipmentIds.length === 0) return { data: [], error: null }
+  try {
+    const { data, error } = await supabase
+      .from('splash_zone_result')
+      .select('project_equipment_id')
+      .in('project_equipment_id', projectEquipmentIds)
+    if (error) return { data: null, error: error.message }
+    return { data: (data ?? []).map((r) => r.project_equipment_id), error: null }
+  } catch {
+    return { data: null, error: 'Network error' }
+  }
+}
+
 // ─── Sea State Limits ─────────────────────────────────────────────────────────
 
 /**

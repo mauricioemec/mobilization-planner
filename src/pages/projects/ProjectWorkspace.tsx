@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { NavLink, Outlet, useParams } from 'react-router-dom'
 import { useProjectStore } from '../../stores/useProjectStore'
 
@@ -20,15 +21,21 @@ const SIDEBAR_LINKS: SidebarLink[] = [
 
 /**
  * Project workspace shell.
- * Renders the 200px sidebar (project meta + sub-page nav) alongside the active sub-page via Outlet.
+ * Loads the active project from Supabase on mount and renders a 200px sidebar
+ * (project meta + sub-page nav) alongside the active sub-page via Outlet.
  */
 export default function ProjectWorkspace() {
   const { id } = useParams<{ id: string }>()
-  const activeProject = useProjectStore((s) => s.activeProject)
+  const { activeProject, loadProject, clearActiveProject } = useProjectStore()
 
-  // Show project name from store if already loaded; falls back to id fragment
+  useEffect(() => {
+    if (id) loadProject(id)
+    return () => clearActiveProject()
+  }, [id, loadProject, clearActiveProject])
+
   const isLoaded = activeProject !== null && activeProject.id === id
   const projectName = isLoaded ? activeProject.name : id
+  const vesselName = isLoaded ? (activeProject.vessel_snapshot?.vessel.name ?? '—') : null
 
   return (
     <div className="flex h-full w-full overflow-hidden">
@@ -45,6 +52,13 @@ export default function ProjectWorkspace() {
           >
             {projectName ?? '—'}
           </p>
+
+          {vesselName && (
+            <p className="mt-0.5 truncate text-xs text-slate-400" title={vesselName}>
+              {vesselName}
+            </p>
+          )}
+
           {isLoaded && (
             <span
               className={[
@@ -52,7 +66,7 @@ export default function ProjectWorkspace() {
                 activeProject.status === 'complete'
                   ? 'bg-green-700 text-green-100'
                   : activeProject.status === 'analyzed'
-                    ? 'bg-blue-700 text-blue-100'
+                    ? 'bg-amber-700 text-amber-100'
                     : 'bg-slate-600 text-slate-200',
               ].join(' ')}
             >

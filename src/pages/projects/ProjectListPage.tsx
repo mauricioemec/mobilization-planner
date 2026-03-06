@@ -1,8 +1,142 @@
-export default function ProjectListPage() {
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Button } from '../../components/ui/button'
+import { useProjectStore } from '../../stores/useProjectStore'
+import { loadEquipmentCountsByProject } from '../../lib/supabase/projectEquipmentService'
+import type { Project, ProjectStatus } from '../../types/database'
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatRelativeTime(dateStr: string): string {
+  const diffMs = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diffMs / 60_000)
+  if (mins < 60) return `${mins} min${mins !== 1 ? 's' : ''} ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours} hour${hours !== 1 ? 's' : ''} ago`
+  const days = Math.floor(hours / 24)
+  return `${days} day${days !== 1 ? 's' : ''} ago`
+}
+
+const STATUS_BADGE: Record<ProjectStatus, string> = {
+  draft: 'bg-gray-100 text-gray-600',
+  analyzed: 'bg-amber-100 text-amber-700',
+  complete: 'bg-green-100 text-green-700',
+}
+
+const STATUS_LABEL: Record<ProjectStatus, string> = {
+  draft: '● Draft',
+  analyzed: '● Analyzed',
+  complete: '● Complete',
+}
+
+// ─── ProjectCard ──────────────────────────────────────────────────────────────
+
+type CardProps = {
+  project: Project
+  equipmentCount: number
+  onOpen: () => void
+  onDelete: () => void
+}
+
+function ProjectCard({ project, equipmentCount, onOpen, onDelete }: CardProps) {
+  const vesselName = project.vessel_snapshot?.vessel.name ?? '—'
+  const craneType = project.vessel_snapshot?.vessel.crane_type ?? '—'
+  const deckL = project.vessel_snapshot?.vessel.deck_length_m
+  const deckW = project.vessel_snapshot?.vessel.deck_width_m
+
   return (
-    <div className="overflow-auto p-8">
-      <h1 className="text-2xl font-semibold text-gray-900">Projects</h1>
-      <p className="mt-2 text-sm text-gray-500">Placeholder — project cards grid goes here.</p>
+    <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-2">
+        <h2 className="text-base font-semibold text-gray-900">{project.name}</h2>
+        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_BADGE[project.status]}`}>
+          {STATUS_LABEL[project.status]}
+        </span>
+      </div>
+
+      <p className="mt-1 text-sm text-gray-600">
+        Vessel: <span className="font-medium">{vesselName}</span>
+        {craneType !== '—' && ` (${craneType.toUpperCase()})`}
+        {deckL != null && deckW != null && ` — ${deckL}×${deckW} m`}
+      </p>
+
+      <p className="text-sm text-gray-500">
+        {project.field_name ? `Field: ${project.field_name}` : 'No field'}
+        {project.water_depth_m != null ? ` | ${project.water_depth_m} m` : ''}
+      </p>
+
+      <p className="mt-1 text-xs text-gray-400">
+        {equipmentCount} item{equipmentCount !== 1 ? 's' : ''} ·{' '}
+        Last modified {formatRelativeTime(project.updated_at)}
+      </p>
+
+      <div className="mt-4 flex items-center justify-between">
+        <Button size="sm" onClick={onOpen}>Open</Button>
+        <Button size="sm" variant="ghost" className="text-red-500 hover:bg-red-50 hover:text-red-700" onClick={onDelete}>
+          Delete
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export default function ProjectListPage() {
+  const navigate = useNavigate()
+  const { projects, isLoading, error, loadProjects, deleteProject } = useProjectStore()
+  const [counts, setCounts] = useState<Record<string, number>>({})
+
+  useEffect(() => {
+    loadProjects()
+  }, [loadProjects])
+
+  useEffect(() => {
+    if (projects.length === 0) return
+    loadEquipmentCountsByProject(projects.map((p) => p.id)).then(({ data }) => {
+      if (data) setCounts(data)
+    })
+  }, [projects])
+
+  async function handleDelete(project: Project) {
+    if (!window.confirm(
+      `Delete "${project.name}"?\n\nThis will permanently delete all equipment placements, RAOs, analysis results, and weather data for this project.`
+    )) return
+    await deleteProject(project.id)
+  }
+
+  return (
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="flex shrink-0 items-center justify-between border-b border-gray-200 bg-white px-6 py-3">
+        <h1 className="text-base font-semibold text-gray-900">Projects</h1>
+        <Button onClick={() => navigate('/projects/new')}>+ New Project</Button>
+      </div>
+
+      {error && (
+        <div className="shrink-0 bg-red-50 px-6 py-2 text-sm text-red-700">{error}</div>
+      )}
+
+      <div className="flex-1 overflow-auto p-6">
+        {isLoading ? (
+          <div className="flex h-32 items-center justify-center text-sm text-gray-400">Loading…</div>
+        ) : projects.length === 0 ? (
+          <div className="flex h-64 flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-200 text-center">
+            <p className="text-sm text-gray-500">No projects yet.</p>
+            <p className="mt-1 text-xs text-gray-400">Click "+ New Project" to create your first operation.</p>
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {projects.map((project) => (
+              <ProjectCard
+                key={project.id}
+                project={project}
+                equipmentCount={counts[project.id] ?? 0}
+                onOpen={() => navigate(`/projects/${project.id}`)}
+                onDelete={() => handleDelete(project)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
