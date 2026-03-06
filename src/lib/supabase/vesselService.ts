@@ -13,6 +13,14 @@ import type {
 
 type ServiceResult<T> = Promise<{ data: T | null; error: string | null }>
 
+/**
+ * Vessel record with embedded crane curve points.
+ * Returned by loadVesselList for the vessel list page — avoids N+1 queries.
+ */
+export type VesselListItem = Vessel & {
+  crane_curve_point: Array<{ radius_m: number; capacity_t: number }>
+}
+
 // ─── Vessel CRUD ──────────────────────────────────────────────────────────────
 
 /** Load all vessels from the global library, ordered by name. */
@@ -24,6 +32,23 @@ export async function loadVessels(): ServiceResult<Vessel[]> {
       .order('name')
     if (error) return { data: null, error: error.message }
     return { data: data as Vessel[], error: null }
+  } catch {
+    return { data: null, error: 'Network error' }
+  }
+}
+
+/**
+ * Load all vessels with their crane curve points embedded (single query).
+ * Used by the vessel list page to show max crane capacity without N+1 queries.
+ */
+export async function loadVesselList(): ServiceResult<VesselListItem[]> {
+  try {
+    const { data, error } = await supabase
+      .from('vessel')
+      .select('*, crane_curve_point(radius_m, capacity_t)')
+      .order('name')
+    if (error) return { data: null, error: error.message }
+    return { data: data as VesselListItem[], error: null }
   } catch {
     return { data: null, error: 'Network error' }
   }

@@ -11,16 +11,22 @@ import type {
 } from '../types/database'
 import {
   loadVessel as fetchVessel,
+  loadVesselList,
   updateVessel as persistVesselUpdate,
+  deleteVessel as persistDeleteVessel,
   saveVesselBarriers,
   loadVesselBarriers,
   saveDeckLoadZones,
   loadDeckLoadZones,
   saveCraneCurve,
   loadCraneCurve,
+  type VesselListItem,
 } from '../lib/supabase/vesselService'
 
 type VesselState = {
+  /** All vessels with embedded crane curve points — for the vessel list page. */
+  vessels: VesselListItem[]
+  /** Active vessel being edited — for the vessel editor page. */
   vessel: Vessel | null
   barriers: VesselBarrier[]
   deckLoadZones: DeckLoadZone[]
@@ -29,12 +35,19 @@ type VesselState = {
   isSaving: boolean
   error: string | null
 
+  /** Load all vessels with crane curve points for the vessel list page. */
+  loadVessels: () => Promise<void>
   /** Load vessel, barriers, deck load zones, and crane curve in parallel. */
   loadVessel: (id: string) => Promise<void>
   /** Apply a partial update to the in-memory vessel (does not persist). */
   updateVessel: (updates: VesselUpdate) => void
   /** Persist the current in-memory vessel to Supabase. */
   saveVessel: () => Promise<void>
+  /**
+   * Delete a vessel by id. Removes it from the vessels list on success.
+   * Returns the error string if deletion fails (e.g. FK constraint from projects).
+   */
+  deleteVessel: (id: string) => Promise<string | null>
 
   /** Add a barrier to local state and persist the full barrier list. */
   addBarrier: (barrier: Omit<VesselBarrierInsert, 'vessel_id'>) => Promise<void>
@@ -54,6 +67,7 @@ type VesselState = {
 }
 
 export const useVesselStore = create<VesselState>((set, get) => ({
+  vessels: [],
   vessel: null,
   barriers: [],
   deckLoadZones: [],
@@ -61,6 +75,16 @@ export const useVesselStore = create<VesselState>((set, get) => ({
   isLoading: false,
   isSaving: false,
   error: null,
+
+  loadVessels: async () => {
+    set({ isLoading: true, error: null })
+    const { data, error } = await loadVesselList()
+    if (error) {
+      set({ isLoading: false, error })
+      return
+    }
+    set({ vessels: data ?? [], isLoading: false })
+  },
 
   loadVessel: async (id) => {
     set({ isLoading: true, error: null })
@@ -103,6 +127,14 @@ export const useVesselStore = create<VesselState>((set, get) => ({
       return
     }
     set({ vessel: data, isSaving: false })
+  },
+
+  deleteVessel: async (id) => {
+    const { error } = await persistDeleteVessel(id)
+    if (!error) {
+      set((state) => ({ vessels: state.vessels.filter((v) => v.id !== id) }))
+    }
+    return error
   },
 
   addBarrier: async (barrier) => {
