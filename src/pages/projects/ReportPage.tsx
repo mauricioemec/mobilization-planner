@@ -169,8 +169,15 @@ export default function ReportPage() {
   }
 
   return (
-    <div className="overflow-auto p-6 space-y-6">
-      <h1 className="text-xl font-semibold text-gray-900">Operation Report</h1>
+    <div className="overflow-auto">
+      <div className="mx-auto max-w-[1400px] px-6 py-6 space-y-6">
+      {/* Page header */}
+      <div className="flex items-center justify-between border-b border-gray-200 pb-4">
+        <h1 className="text-xl font-semibold text-gray-900">Operation Report</h1>
+        <Button onClick={handleGenerate} disabled={generating}>
+          {generating ? 'Generating…' : 'Generate Report'}
+        </Button>
+      </div>
 
       {/* Section checkboxes */}
       <section className="space-y-2">
@@ -198,12 +205,9 @@ export default function ReportPage() {
         </div>
       </section>
 
-      {/* Generate button + progress bar */}
-      <section className="space-y-3">
-        <Button onClick={handleGenerate} disabled={generating}>
-          {generating ? 'Generating…' : 'Generate Report'}
-        </Button>
-        {generating && (
+      {/* Progress bar (only during generation) */}
+      {generating && (
+        <section className="space-y-3">
           <div className="max-w-sm space-y-1.5">
             <div className="flex justify-between text-xs text-gray-600">
               <span>{STEPS[Math.min(stepIdx, STEPS.length - 1)]}</span>
@@ -216,8 +220,8 @@ export default function ReportPage() {
               />
             </div>
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
       {/* Preview + download */}
       {pdfUrl && !generating && (
@@ -253,6 +257,8 @@ export default function ReportPage() {
           sections={sections}
         />
       )}
+      </div>
     </div>
   )
 }
+

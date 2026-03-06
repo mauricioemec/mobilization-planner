@@ -111,11 +111,14 @@ function VesselCard({ vessel, onEdit, onDelete }: VesselCardProps) {
         </dl>
       </CardContent>
 
-      <CardFooter>
-        <Button size="sm" variant="outline" onClick={onEdit}>
-          Edit
-        </Button>
-        <Button size="sm" variant="destructive" onClick={onDelete}>
+      <CardFooter className="flex gap-2">
+        <Button size="sm" variant="outline" onClick={onEdit}>Edit</Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+          onClick={onDelete}
+        >
           Delete
         </Button>
       </CardFooter>
@@ -172,20 +175,18 @@ export default function VesselListPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col overflow-auto">
-      {/* Page header */}
-      <div className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
-        <h1 className="text-xl font-semibold text-gray-900">Vessel Library</h1>
-        <Button onClick={() => navigate('/vessels/new')}>+ New Vessel</Button>
-      </div>
+    <div className="flex-1 overflow-auto">
+      <div className="mx-auto max-w-[1400px] px-6 py-6">
+        {/* Page header */}
+        <div className="mb-6 flex items-center justify-between border-b border-gray-200 pb-4">
+          <h1 className="text-xl font-semibold text-gray-900">Vessel Library</h1>
+          <Button onClick={() => navigate('/vessels/new')}>+ New Vessel</Button>
+        </div>
 
-      <div className="p-6">
-        {/* Loading skeletons — 6 placeholders in the same grid layout */}
+        {/* Loading skeletons */}
         {isLoading && (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <VesselCardSkeleton key={i} />
-            ))}
+            {Array.from({ length: 6 }).map((_, i) => <VesselCardSkeleton key={i} />)}
           </div>
         )}
 
@@ -193,10 +194,8 @@ export default function VesselListPage() {
         {!isLoading && vessels.length === 0 && (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <p className="text-base font-medium text-gray-700">No vessels registered.</p>
-            <p className="mt-1 text-sm text-gray-500">Create your first vessel.</p>
-            <Button className="mt-6" onClick={() => navigate('/vessels/new')}>
-              + New Vessel
-            </Button>
+            <p className="mt-1 text-sm text-gray-500">Create your first vessel to get started.</p>
+            <Button className="mt-6" onClick={() => navigate('/vessels/new')}>+ New Vessel</Button>
           </div>
         )}
 
@@ -243,3 +242,4 @@ export default function VesselListPage() {
     </div>
   )
 }
+

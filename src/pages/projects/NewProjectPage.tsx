@@ -90,19 +90,21 @@ export default function NewProjectPage() {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      <div className="flex shrink-0 items-center gap-3 border-b border-gray-200 bg-white px-6 py-3">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/projects')}>← Back</Button>
-        <span className="text-gray-300">|</span>
-        <h1 className="text-base font-semibold text-gray-900">New Project</h1>
-      </div>
+    <div className="flex-1 overflow-auto">
+      <div className="mx-auto max-w-2xl px-6 py-6">
+        {/* Page header */}
+        <div className="mb-6 flex items-center justify-between border-b border-gray-200 pb-4">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={() => navigate('/projects')}>← Projects</Button>
+            <h1 className="text-xl font-semibold text-gray-900">New Project</h1>
+          </div>
+        </div>
 
-      {submitError && (
-        <div className="shrink-0 bg-red-50 px-6 py-2 text-sm text-red-700">{submitError}</div>
-      )}
+        {submitError && (
+          <div className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{submitError}</div>
+        )}
 
-      <div className="flex-1 overflow-auto">
-        <div className="mx-auto max-w-2xl space-y-6 px-6 py-8">
+        <div className="space-y-6">
           <FormField label="Project Name *" error={fieldErrors.name}>
             <Input value={values.name} onChange={(e) => handleChange('name', e.target.value)} placeholder="e.g. Búzios PLET Campaign" maxLength={200} />
           </FormField>
@@ -162,3 +164,4 @@ export default function NewProjectPage() {
     </div>
   )
 }
+
