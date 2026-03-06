@@ -1,155 +1,28 @@
-import { useState, useEffect, useCallback } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/tabs'
 import { DeckTab } from '../../components/vessels/DeckTab'
 import { CraneTab } from '../../components/vessels/CraneTab'
-import { loadVessel, saveVessel } from '../../lib/supabase/vesselService'
-import { vesselSchema } from '../../validation/schemas'
-import type { Vessel, VesselType, CraneType } from '../../types/database'
-
-type VesselFormState = {
-  name: string
-  vessel_type: string
-  description: string
-  deck_length_m: string
-  deck_width_m: string
-  crane_type: string
-  crane_pedestal_x: string
-  crane_pedestal_y: string
-  crane_pedestal_height_m: string
-  crane_boom_length_m: string
-  crane_jib_length_m: string
-  crane_slew_min_deg: string
-  crane_slew_max_deg: string
-}
-
-const DEFAULT_STATE: VesselFormState = {
-  name: '',
-  vessel_type: 'PLSV',
-  description: '',
-  deck_length_m: '',
-  deck_width_m: '',
-  crane_type: 'OMC',
-  crane_pedestal_x: '0',
-  crane_pedestal_y: '0',
-  crane_pedestal_height_m: '',
-  crane_boom_length_m: '',
-  crane_jib_length_m: '',
-  crane_slew_min_deg: '0',
-  crane_slew_max_deg: '360',
-}
-
-function vesselToFormState(v: Vessel): VesselFormState {
-  return {
-    name: v.name,
-    vessel_type: v.vessel_type,
-    description: v.description ?? '',
-    deck_length_m: String(v.deck_length_m),
-    deck_width_m: String(v.deck_width_m),
-    crane_type: v.crane_type,
-    crane_pedestal_x: String(v.crane_pedestal_x),
-    crane_pedestal_y: String(v.crane_pedestal_y),
-    crane_pedestal_height_m: String(v.crane_pedestal_height_m),
-    crane_boom_length_m: String(v.crane_boom_length_m),
-    crane_jib_length_m: v.crane_jib_length_m != null ? String(v.crane_jib_length_m) : '',
-    crane_slew_min_deg: String(v.crane_slew_min_deg ?? 0),
-    crane_slew_max_deg: String(v.crane_slew_max_deg ?? 360),
-  }
-}
+import { BarriersTab } from '../../components/vessels/BarriersTab'
+import { DeckLoadZonesTab } from '../../components/vessels/DeckLoadZonesTab'
+import { useVesselEditor } from '../../hooks/useVesselEditor'
 
 export default function VesselEditorPage() {
-  const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const isNew = id === undefined
-
-  const [values, setValues] = useState<VesselFormState>(DEFAULT_STATE)
-  const [errors, setErrors] = useState<Record<string, string>>({})
   const [activeTab, setActiveTab] = useState('deck')
-  const [loading, setLoading] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [notification, setNotification] = useState<{ msg: string; ok: boolean } | null>(null)
 
-  useEffect(() => {
-    if (!id) return
-    setLoading(true)
-    loadVessel(id).then(({ data, error }) => {
-      if (error) setNotification({ msg: `Failed to load vessel: ${error}`, ok: false })
-      else if (data) setValues(vesselToFormState(data))
-      setLoading(false)
-    })
-  }, [id])
-
-  const handleChange = useCallback((field: string, value: string) => {
-    setValues((prev) => ({ ...prev, [field]: value }))
-    setErrors((prev) => {
-      const next = { ...prev }
-      delete next[field]
-      return next
-    })
-  }, [])
-
-  async function handleSave() {
-    setSaving(true)
-    setErrors({})
-    setNotification(null)
-
-    const raw = {
-      name: values.name.trim(),
-      vessel_type: values.vessel_type as VesselType,
-      description: values.description.trim() || null,
-      deck_length_m: parseFloat(values.deck_length_m),
-      deck_width_m: parseFloat(values.deck_width_m),
-      deck_origin_x: 0,
-      deck_origin_y: 0,
-      crane_type: values.crane_type as CraneType,
-      crane_pedestal_x: parseFloat(values.crane_pedestal_x),
-      crane_pedestal_y: parseFloat(values.crane_pedestal_y),
-      crane_pedestal_height_m: parseFloat(values.crane_pedestal_height_m),
-      crane_boom_length_m: parseFloat(values.crane_boom_length_m),
-      crane_jib_length_m: values.crane_jib_length_m ? parseFloat(values.crane_jib_length_m) : null,
-      crane_slew_min_deg: parseFloat(values.crane_slew_min_deg),
-      crane_slew_max_deg: parseFloat(values.crane_slew_max_deg),
-    }
-
-    const result = vesselSchema.safeParse(raw)
-    if (!result.success) {
-      const fieldErrors: Record<string, string> = {}
-      result.error.errors.forEach((e) => {
-        const field = e.path[0]?.toString()
-        if (field) fieldErrors[field] = e.message
-      })
-      setErrors(fieldErrors)
-      setNotification({ msg: 'Please fix the validation errors below.', ok: false })
-      setSaving(false)
-      return
-    }
-
-    const validated = {
-      ...result.data,
-      description: result.data.description ?? null,
-      crane_jib_length_m: result.data.crane_jib_length_m ?? null,
-    }
-    const payload = isNew ? validated : { ...validated, id }
-    const { data: saved, error } = await saveVessel(payload)
-
-    if (error || !saved) {
-      setNotification({ msg: `Save failed: ${error ?? 'unknown error'}`, ok: false })
-      setSaving(false)
-      return
-    }
-
-    if (isNew) {
-      navigate(`/vessels/${saved.id}`)
-    } else {
-      setNotification({ msg: 'Vessel saved successfully.', ok: true })
-      setTimeout(() => setNotification(null), 3000)
-    }
-    setSaving(false)
-  }
+  const {
+    isNew, loading, saving, notification,
+    values, fieldErrors, handleChange,
+    barriers, setBarriers,
+    zones, setZones,
+    deckLength, deckWidth,
+    handleSave,
+  } = useVesselEditor()
 
   if (loading) {
-    return <div className="flex h-full items-center justify-center text-gray-500">Loading…</div>
+    return <div className="flex h-full items-center justify-center text-sm text-gray-500">Loading…</div>
   }
 
   const title = isNew ? 'New Vessel' : (values.name || 'Vessel Editor')
@@ -205,16 +78,26 @@ export default function VesselEditorPage() {
 
             <div className="flex-1 overflow-auto">
               <TabsContent value="deck">
-                <DeckTab values={values} errors={errors} onChange={handleChange} />
+                <DeckTab values={values} errors={fieldErrors} onChange={handleChange} />
               </TabsContent>
               <TabsContent value="barriers">
-                <div className="p-6 text-sm text-gray-400">Barriers editor — coming soon.</div>
+                <BarriersTab
+                  rows={barriers}
+                  deckLength={deckLength}
+                  deckWidth={deckWidth}
+                  onChange={setBarriers}
+                />
               </TabsContent>
               <TabsContent value="load-zones">
-                <div className="p-6 text-sm text-gray-400">Deck Load Zones editor — coming soon.</div>
+                <DeckLoadZonesTab
+                  rows={zones}
+                  deckLength={deckLength}
+                  deckWidth={deckWidth}
+                  onChange={setZones}
+                />
               </TabsContent>
               <TabsContent value="crane">
-                <CraneTab values={values} errors={errors} onChange={handleChange} />
+                <CraneTab values={values} errors={fieldErrors} onChange={handleChange} />
               </TabsContent>
               <TabsContent value="crane-curve">
                 <div className="p-6 text-sm text-gray-400">Crane Curve editor — coming soon.</div>
