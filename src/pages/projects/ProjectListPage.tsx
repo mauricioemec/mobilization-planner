@@ -90,6 +90,7 @@ export default function ProjectListPage() {
   const [counts, setCounts] = useState<Record<string, number>>({})
   const [dbEmpty, setDbEmpty] = useState(false)
   const [seeding, setSeeding] = useState(false)
+  const [seedError, setSeedError] = useState<string | null>(null)
   const [resetting, setResetting] = useState(false)
   const [resetConfirmText, setResetConfirmText] = useState('')
   const [showResetInput, setShowResetInput] = useState(false)
@@ -115,9 +116,10 @@ export default function ProjectListPage() {
 
   async function handleSeed() {
     setSeeding(true)
+    setSeedError(null)
     const result = await seedDemoData()
     if (!result.ok) {
-      window.alert(`Seed failed: ${result.error}`)
+      setSeedError(result.error ?? 'Unknown error — check browser console for details.')
       setSeeding(false)
       return
     }
@@ -176,13 +178,20 @@ export default function ProjectListPage() {
             <p className="text-sm text-gray-500">No projects yet.</p>
             <p className="mt-1 text-xs text-gray-400">Click &quot;+ New Project&quot; to create your first operation.</p>
             {dbEmpty && (
-              <Button
-                className="mt-4"
-                onClick={handleSeed}
-                disabled={seeding}
-              >
-                {seeding ? 'Loading Demo Data…' : 'Load Demo Data'}
-              </Button>
+              <>
+                <Button
+                  className="mt-4"
+                  onClick={handleSeed}
+                  disabled={seeding}
+                >
+                  {seeding ? 'Loading Demo Data…' : 'Load Demo Data'}
+                </Button>
+                {seedError && (
+                  <p className="mt-3 max-w-sm rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                    Seed failed: {seedError}
+                  </p>
+                )}
+              </>
             )}
           </div>
         ) : (
