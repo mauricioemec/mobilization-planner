@@ -71,6 +71,12 @@ export const DeckCanvas = forwardRef<DeckCanvasHandle, Props>(function DeckCanva
     return rs.length ? Math.max(...rs) : 0
   }, [craneCurve])
 
+  /** Capacity at maximum radius (lowest capacity point) */
+  const capacityAtMaxR = useMemo(() => {
+    if (!craneCurve.length || maxR === 0) return null
+    return craneCurve.find((p) => p.radius_m === maxR)?.capacity_t ?? null
+  }, [craneCurve, maxR])
+
   const pX = vessel?.crane_pedestal_x ?? 0
   const pY = vessel?.crane_pedestal_y ?? 0
   const sMin = vessel?.crane_slew_min_deg ?? 0
@@ -198,11 +204,12 @@ export const DeckCanvas = forwardRef<DeckCanvasHandle, Props>(function DeckCanva
                 fill="#374151"
                 listening={false}
               />
+              {/* Active radius arc — thick bright orange dashed */}
               <Shape
                 x={wx(pX)} y={wy(pY)}
-                stroke={activeCraneInfo.capacityOk ? '#16a34a' : '#dc2626'}
-                strokeWidth={1.5}
-                dash={[4, 3]}
+                stroke="#f97316"
+                strokeWidth={3}
+                dash={[10, 6]}
                 listening={false}
                 sceneFunc={(ctx, shape) => {
                   const r = activeCraneInfo.radiusM * bs
@@ -211,12 +218,23 @@ export const DeckCanvas = forwardRef<DeckCanvasHandle, Props>(function DeckCanva
                   ctx.strokeShape(shape)
                 }}
               />
+              {/* Capacity label at right of arc */}
               <Text
-                x={wx(pX) + activeCraneInfo.radiusM * bs + 4}
-                y={wy(pY) - 12}
-                text={`${activeCraneInfo.capacityT.toFixed(0)}t`}
+                x={wx(pX) + activeCraneInfo.radiusM * bs + 5}
+                y={wy(pY) - 8}
+                text={`${activeCraneInfo.capacityT.toFixed(0)} t`}
+                fontSize={fz + 1}
+                fontStyle="bold"
+                fill="#f97316"
+                listening={false}
+              />
+              {/* Capacity label at top of arc */}
+              <Text
+                x={wx(pX) - 14}
+                y={wy(pY) - activeCraneInfo.radiusM * bs - 16}
+                text={`${activeCraneInfo.radiusM.toFixed(0)} m`}
                 fontSize={fz}
-                fill={activeCraneInfo.capacityOk ? '#16a34a' : '#dc2626'}
+                fill="#f97316"
                 listening={false}
               />
             </>
@@ -235,13 +253,27 @@ export const DeckCanvas = forwardRef<DeckCanvasHandle, Props>(function DeckCanva
 
           {/* Crane pedestal and envelope */}
           {deckL > 0 && <>
-            {maxR > 0 && <Shape x={wx(pX)} y={wy(pY)} stroke="#111827" strokeWidth={1.5} dash={[6, 4]} listening={false}
-              sceneFunc={(ctx, shape) => {
-                const r = maxR * bs; ctx.beginPath()
-                if (sMax - sMin >= 360) ctx.arc(0, 0, r, 0, 2 * Math.PI, false)
-                else ctx.arc(0, 0, r, -(sMin * Math.PI / 180), -(sMax * Math.PI / 180), true)
-                ctx.strokeShape(shape)
-              }} />}
+            {/* Max radius slew envelope — thick bright orange dashed */}
+            {maxR > 0 && <>
+              <Shape x={wx(pX)} y={wy(pY)} stroke="#f97316" strokeWidth={3} dash={[10, 6]} listening={false}
+                sceneFunc={(ctx, shape) => {
+                  const r = maxR * bs; ctx.beginPath()
+                  if (sMax - sMin >= 360) ctx.arc(0, 0, r, 0, 2 * Math.PI, false)
+                  else ctx.arc(0, 0, r, -(sMin * Math.PI / 180), -(sMax * Math.PI / 180), true)
+                  ctx.strokeShape(shape)
+                }} />
+              {/* Capacity label at right of max-radius arc */}
+              {capacityAtMaxR != null && (
+                <Text
+                  x={wx(pX) + maxR * bs + 5}
+                  y={wy(pY) - 8}
+                  text={`${maxR.toFixed(0)} m · ${capacityAtMaxR} t`}
+                  fontSize={fz}
+                  fill="#ea580c"
+                  listening={false}
+                />
+              )}
+            </>}
             <Circle x={wx(pX)} y={wy(pY)} radius={6} fill="#111827" listening={false} />
             {/* Axes */}
             <Arrow points={[wx(0), wy(0), wx(Math.min(10, deckL * 0.15)), wy(0)]} fill="#dc2626" stroke="#dc2626" strokeWidth={1.5} pointerLength={6} pointerWidth={5} listening={false} />

@@ -1,36 +1,47 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useParams } from 'react-router-dom'
+import { LayoutDashboard, Map, Calculator, Box, FileText } from 'lucide-react'
 import { useProjectStore } from '../../stores/useProjectStore'
 import { Skeleton } from '../../components/ui/skeleton'
+import { loadEquipmentCountsByProject } from '../../lib/supabase/projectEquipmentService'
 
 type SidebarLink = {
   to: string
   label: string
-  /** Use end=true only for the Overview index route so it isn't always active */
+  icon: React.ComponentType<{ className?: string }>
   end?: boolean
 }
 
 const SIDEBAR_LINKS: SidebarLink[] = [
-  { to: '.', label: 'Overview', end: true },
-  { to: 'deck', label: 'Deck' },
-  { to: 'analysis', label: 'Analysis' },
-  { to: '3d', label: '3D' },
-  { to: 'report', label: 'Report' },
+  { to: '.', label: 'Overview', icon: LayoutDashboard, end: true },
+  { to: 'deck', label: 'Deck', icon: Map },
+  { to: 'analysis', label: 'Analysis', icon: Calculator },
+  { to: '3d', label: '3D', icon: Box },
+  { to: 'report', label: 'Report', icon: FileText },
 ]
 
 /**
  * Project workspace shell.
- * Loads the active project from Supabase on mount and renders a 200px sidebar
- * (project meta + sub-page nav) alongside the active sub-page via Outlet.
+ * Loads the active project from Supabase on mount and renders a 180px sidebar
+ * (nav with icons + project meta below) alongside the active sub-page via Outlet.
  */
 export default function ProjectWorkspace() {
   const { id } = useParams<{ id: string }>()
   const { activeProject, loadProject, clearActiveProject } = useProjectStore()
+  const [equipmentCount, setEquipmentCount] = useState<number | null>(null)
 
   useEffect(() => {
     if (id) void loadProject(id)
     return () => clearActiveProject()
   }, [id, loadProject, clearActiveProject])
+
+  useEffect(() => {
+    if (id) {
+      void loadEquipmentCountsByProject([id]).then(({ data }) => {
+        if (data) setEquipmentCount(data[id] ?? 0)
+      })
+    }
+  }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const isLoaded = activeProject !== null && activeProject.id === id
   const vesselName = isLoaded ? (activeProject.vessel_snapshot?.vessel.name ?? '—') : null
@@ -38,25 +49,52 @@ export default function ProjectWorkspace() {
   return (
     <div className="flex h-full w-full overflow-hidden">
       {/* ── Sidebar ── */}
-      <aside className="flex w-[200px] flex-shrink-0 flex-col overflow-y-auto border-r border-slate-700 bg-slate-800">
-        {/* Project summary */}
-        <div className="border-b border-slate-700 px-4 py-4">
-          <p className="truncate text-xs font-medium uppercase tracking-wider text-slate-400">
-            Project
-          </p>
+      <aside className="flex w-[180px] flex-shrink-0 flex-col overflow-y-auto border-r border-slate-700 bg-slate-800">
+        {/* Project name */}
+        <div className="border-b border-slate-700 px-4 py-3">
+          <p className="truncate text-[10px] font-medium uppercase tracking-wider text-slate-400">Project</p>
+          {isLoaded ? (
+            <p className="mt-0.5 truncate text-sm font-semibold text-white" title={activeProject.name}>
+              {activeProject.name}
+            </p>
+          ) : (
+            <Skeleton className="mt-1 h-4 w-28 bg-slate-600" />
+          )}
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex flex-col gap-0.5 px-2 py-3">
+          {SIDEBAR_LINKS.map(({ to, label, icon: Icon, end }) => (
+            <NavLink
+              key={label}
+              to={to}
+              end={end}
+              relative="path"
+              className={({ isActive }) =>
+                [
+                  'flex items-center gap-2.5 rounded px-3 py-2 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'bg-slate-600 text-white'
+                    : 'text-slate-300 hover:bg-slate-700 hover:text-white',
+                ].join(' ')
+              }
+            >
+              <Icon className="h-4 w-4 shrink-0" />
+              {label}
+            </NavLink>
+          ))}
+        </nav>
+
+        {/* Bottom meta — vessel, status, equipment count */}
+        <div className="mt-auto border-t border-slate-700 px-4 py-3 space-y-1.5">
           {isLoaded ? (
             <>
-              <p className="mt-1 truncate text-sm font-semibold text-white" title={activeProject.name}>
-                {activeProject.name}
-              </p>
               {vesselName && (
-                <p className="mt-0.5 truncate text-xs text-slate-400" title={vesselName}>
-                  {vesselName}
-                </p>
+                <p className="truncate text-xs text-slate-400" title={vesselName}>{vesselName}</p>
               )}
               <span
                 className={[
-                  'mt-2 inline-block rounded px-1.5 py-0.5 text-xs font-medium',
+                  'inline-block rounded px-1.5 py-0.5 text-xs font-medium',
                   activeProject.status === 'complete'
                     ? 'bg-green-700 text-green-100'
                     : activeProject.status === 'analyzed'
@@ -66,36 +104,19 @@ export default function ProjectWorkspace() {
               >
                 {activeProject.status}
               </span>
+              {equipmentCount !== null && (
+                <p className="text-xs text-slate-400">
+                  {equipmentCount} item{equipmentCount !== 1 ? 's' : ''}
+                </p>
+              )}
             </>
           ) : (
             <>
-              <Skeleton className="mt-1 h-4 w-32 bg-slate-600" />
-              <Skeleton className="mt-1.5 h-3 w-24 bg-slate-600" />
+              <Skeleton className="h-3 w-24 bg-slate-600" />
+              <Skeleton className="mt-1.5 h-4 w-16 bg-slate-600" />
             </>
           )}
         </div>
-
-        {/* Navigation */}
-        <nav className="flex flex-col gap-0.5 px-2 py-3">
-          {SIDEBAR_LINKS.map(({ to, label, end }) => (
-            <NavLink
-              key={label}
-              to={to}
-              end={end}
-              relative="path"
-              className={({ isActive }) =>
-                [
-                  'rounded px-3 py-2 text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-300 hover:bg-slate-700 hover:text-white',
-                ].join(' ')
-              }
-            >
-              {label}
-            </NavLink>
-          ))}
-        </nav>
       </aside>
 
       {/* ── Content area ── */}
