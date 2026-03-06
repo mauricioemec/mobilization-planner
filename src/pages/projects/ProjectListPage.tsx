@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
+import { Skeleton } from '../../components/ui/skeleton'
 import { useProjectStore } from '../../stores/useProjectStore'
 import { loadEquipmentCountsByProject } from '../../lib/supabase/projectEquipmentService'
 import { isDatabaseEmpty, seedDemoData } from '../../lib/supabase/seedService'
@@ -94,13 +95,13 @@ export default function ProjectListPage() {
   const [showResetInput, setShowResetInput] = useState(false)
 
   useEffect(() => {
-    loadProjects()
-    isDatabaseEmpty().then(setDbEmpty)
+    void loadProjects()
+    void isDatabaseEmpty().then(setDbEmpty)
   }, [loadProjects])
 
   useEffect(() => {
     if (projects.length === 0) return
-    loadEquipmentCountsByProject(projects.map((p) => p.id)).then(({ data }) => {
+    void loadEquipmentCountsByProject(projects.map((p) => p.id)).then(({ data }) => {
       if (data) setCounts(data)
     })
   }, [projects])
@@ -156,11 +157,24 @@ export default function ProjectListPage() {
 
       <div className="flex-1 overflow-auto p-6">
         {isLoading ? (
-          <div className="flex h-32 items-center justify-center text-sm text-gray-400">Loading…</div>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="rounded-lg border border-gray-200 bg-white p-5">
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="mt-2 h-4 w-1/2" />
+                <Skeleton className="mt-1 h-4 w-2/5" />
+                <Skeleton className="mt-1 h-3 w-1/3" />
+                <div className="mt-4 flex items-center justify-between">
+                  <Skeleton className="h-7 w-14" />
+                  <Skeleton className="h-7 w-16" />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : projects.length === 0 ? (
           <div className="flex h-64 flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-200 text-center">
             <p className="text-sm text-gray-500">No projects yet.</p>
-            <p className="mt-1 text-xs text-gray-400">Click "+ New Project" to create your first operation.</p>
+            <p className="mt-1 text-xs text-gray-400">Click &quot;+ New Project&quot; to create your first operation.</p>
             {dbEmpty && (
               <Button
                 className="mt-4"

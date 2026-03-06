@@ -45,8 +45,8 @@ export function useDeckLayout() {
   // Load deck placements and equipment library on mount
   useEffect(() => {
     if (!projectId) return
-    deckStore.loadProjectEquipment(projectId)
-    equipStore.loadEquipment()
+    void deckStore.loadProjectEquipment(projectId)
+    void equipStore.loadEquipment()
   }, [projectId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Delete-key and Ctrl+Z keyboard shortcuts
@@ -54,11 +54,11 @@ export function useDeckLayout() {
     function onKey(e: KeyboardEvent) {
       if ((e.target as HTMLElement).tagName === 'INPUT') return
       if (e.key === 'Delete' && deckStore.selectedEquipmentId) {
-        handleRemove(deckStore.selectedEquipmentId)
+        void handleRemove(deckStore.selectedEquipmentId)
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
         e.preventDefault()
-        handleUndo()
+        void handleUndo()
       }
     }
     window.addEventListener('keydown', onKey)
@@ -66,9 +66,9 @@ export function useDeckLayout() {
   }, [deckStore.selectedEquipmentId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const vessel = activeProject?.vessel_snapshot?.vessel ?? null
-  const barriers = activeProject?.vessel_snapshot?.barriers ?? []
-  const zones = activeProject?.vessel_snapshot?.deck_load_zones ?? []
-  const craneCurve: CraneCurvePoint[] = activeProject?.vessel_snapshot?.crane_curve_points ?? []
+  const barriers = useMemo(() => activeProject?.vessel_snapshot?.barriers ?? [], [activeProject])
+  const zones = useMemo(() => activeProject?.vessel_snapshot?.deck_load_zones ?? [], [activeProject])
+  const craneCurve = useMemo<CraneCurvePoint[]>(() => activeProject?.vessel_snapshot?.crane_curve_points ?? [], [activeProject])
 
   const libById = useMemo<Record<string, EquipmentLibrary>>(() => {
     const m: Record<string, EquipmentLibrary> = {}
@@ -197,7 +197,7 @@ export function useDeckLayout() {
 
     // Reload items so UI reflects the persisted overboard position
     const pid = deckStore.items[0]?.project_id
-    if (pid) deckStore.loadProjectEquipment(pid)
+    if (pid) void deckStore.loadProjectEquipment(pid)
   }, [deckStore, libById, vessel, snap, computeCraneInfo, craneStore]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleRotate = useCallback(async (id: string, deg: number) => {

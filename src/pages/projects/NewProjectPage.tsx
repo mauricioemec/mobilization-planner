@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
+import { Skeleton } from '../../components/ui/skeleton'
 import { Input } from '../../components/ui/input'
 import { Textarea } from '../../components/ui/textarea'
 import { FormField } from '../../components/vessels/FormField'
@@ -36,7 +37,7 @@ export default function NewProjectPage() {
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   useEffect(() => {
-    loadVessels().then(({ data }) => {
+    void loadVessels().then(({ data }) => {
       setVessels(data ?? [])
       setLoadingVessels(false)
     })
@@ -117,7 +118,9 @@ export default function NewProjectPage() {
 
           <FormField label="Select Vessel *" error={fieldErrors.vessel_id}>
             {loadingVessels ? (
-              <p className="text-sm text-gray-400">Loading vessels…</p>
+              <div className="space-y-2 rounded-lg border border-gray-200 p-2">
+                {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+              </div>
             ) : vessels.length === 0 ? (
               <p className="text-sm text-amber-600">
                 No vessels in library.{' '}

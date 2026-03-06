@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
+import { Skeleton } from '../../components/ui/skeleton'
 import { useProjectStore } from '../../stores/useProjectStore'
 import { loadProjectEquipment } from '../../lib/supabase/projectEquipmentService'
 import { loadEquipment } from '../../lib/supabase/equipmentService'
@@ -45,7 +46,7 @@ export default function ProjectOverviewPage() {
   useEffect(() => {
     if (!id) return
     setLoading(true)
-    Promise.all([loadProjectEquipment(id), loadEquipment()]).then(
+    void Promise.all([loadProjectEquipment(id), loadEquipment()]).then(
       async ([placRes, libRes]) => {
         if (placRes.error) { setLoadError(placRes.error); setLoading(false); return }
         const placed = placRes.data ?? []
@@ -69,7 +70,40 @@ export default function ProjectOverviewPage() {
   const vessel = activeProject?.vessel_snapshot?.vessel
 
   if (!isLoaded || loading) {
-    return <div className="flex h-full items-center justify-center text-sm text-gray-400">Loading…</div>
+    return (
+      <div className="overflow-auto p-6 space-y-6">
+        <div className="flex items-start justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-7 w-72" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-8 w-32" />
+            <Skeleton className="h-8 w-36" />
+          </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
+            <Skeleton className="h-3 w-20" />
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex justify-between">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-28" />
+              </div>
+            ))}
+          </div>
+          <div className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
+            <Skeleton className="h-3 w-16" />
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex justify-between">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-28" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (loadError) {

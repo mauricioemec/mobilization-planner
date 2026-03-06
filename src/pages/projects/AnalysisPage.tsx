@@ -36,9 +36,9 @@ export default function AnalysisPage() {
 
   useEffect(() => {
     if (!projectId) return
-    deckStore.loadProjectEquipment(projectId)
-    equipStore.loadEquipment()
-    raoStore.loadRaos(projectId)
+    void deckStore.loadProjectEquipment(projectId)
+    void equipStore.loadEquipment()
+    void raoStore.loadRaos(projectId)
   }, [projectId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Equipment with overboard positions
@@ -64,7 +64,7 @@ export default function AnalysisPage() {
   // Load existing results when selection changes
   useEffect(() => {
     if (selectedPeId) {
-      analysisStore.loadResults(selectedPeId)
+      void analysisStore.loadResults(selectedPeId)
       setLocalCells([])
     }
   }, [selectedPeId]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -107,7 +107,7 @@ export default function AnalysisPage() {
       area_z_m2: areasVal.area_z_m2, volume_m3: volumeVal,
       crane_tip_heave_m: ct.craneTipHeaveM,
       dry_weight_t: eq.dry_weight_t,
-      crane_capacity_overboard_t: pe.crane_capacity_overboard_t!,
+      crane_capacity_overboard_t: pe.crane_capacity_overboard_t,
     })
 
     const worstDafRow = gridResult.cells.find((c) => c.hs_m === gridResult.max_hs_m) ?? gridResult.cells[0]

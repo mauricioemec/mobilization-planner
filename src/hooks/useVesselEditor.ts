@@ -143,7 +143,7 @@ export function useVesselEditor() {
   useEffect(() => {
     if (!id) return
     setLoading(true)
-    Promise.all([loadVessel(id), loadVesselBarriers(id), loadDeckLoadZones(id), loadCraneCurve(id)]).then(
+    void Promise.all([loadVessel(id), loadVesselBarriers(id), loadDeckLoadZones(id), loadCraneCurve(id)]).then(
       ([vessel, barrs, zns, curve]) => {
         if (vessel.error) { setNotification({ msg: `Load failed: ${vessel.error}`, ok: false }); setLoading(false); return }
         if (vessel.data) setValues(vesselToForm(vessel.data))

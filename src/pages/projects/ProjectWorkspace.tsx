@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { NavLink, Outlet, useParams } from 'react-router-dom'
 import { useProjectStore } from '../../stores/useProjectStore'
+import { Skeleton } from '../../components/ui/skeleton'
 
 type SidebarLink = {
   to: string
@@ -29,12 +30,11 @@ export default function ProjectWorkspace() {
   const { activeProject, loadProject, clearActiveProject } = useProjectStore()
 
   useEffect(() => {
-    if (id) loadProject(id)
+    if (id) void loadProject(id)
     return () => clearActiveProject()
   }, [id, loadProject, clearActiveProject])
 
   const isLoaded = activeProject !== null && activeProject.id === id
-  const projectName = isLoaded ? activeProject.name : id
   const vesselName = isLoaded ? (activeProject.vessel_snapshot?.vessel.name ?? '—') : null
 
   return (
@@ -46,32 +46,34 @@ export default function ProjectWorkspace() {
           <p className="truncate text-xs font-medium uppercase tracking-wider text-slate-400">
             Project
           </p>
-          <p
-            className="mt-1 truncate text-sm font-semibold text-white"
-            title={projectName ?? undefined}
-          >
-            {projectName ?? '—'}
-          </p>
-
-          {vesselName && (
-            <p className="mt-0.5 truncate text-xs text-slate-400" title={vesselName}>
-              {vesselName}
-            </p>
-          )}
-
-          {isLoaded && (
-            <span
-              className={[
-                'mt-2 inline-block rounded px-1.5 py-0.5 text-xs font-medium',
-                activeProject.status === 'complete'
-                  ? 'bg-green-700 text-green-100'
-                  : activeProject.status === 'analyzed'
-                    ? 'bg-amber-700 text-amber-100'
-                    : 'bg-slate-600 text-slate-200',
-              ].join(' ')}
-            >
-              {activeProject.status}
-            </span>
+          {isLoaded ? (
+            <>
+              <p className="mt-1 truncate text-sm font-semibold text-white" title={activeProject.name}>
+                {activeProject.name}
+              </p>
+              {vesselName && (
+                <p className="mt-0.5 truncate text-xs text-slate-400" title={vesselName}>
+                  {vesselName}
+                </p>
+              )}
+              <span
+                className={[
+                  'mt-2 inline-block rounded px-1.5 py-0.5 text-xs font-medium',
+                  activeProject.status === 'complete'
+                    ? 'bg-green-700 text-green-100'
+                    : activeProject.status === 'analyzed'
+                      ? 'bg-amber-700 text-amber-100'
+                      : 'bg-slate-600 text-slate-200',
+                ].join(' ')}
+              >
+                {activeProject.status}
+              </span>
+            </>
+          ) : (
+            <>
+              <Skeleton className="mt-1 h-4 w-32 bg-slate-600" />
+              <Skeleton className="mt-1.5 h-3 w-24 bg-slate-600" />
+            </>
           )}
         </div>
 

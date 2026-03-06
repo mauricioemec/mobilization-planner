@@ -48,15 +48,15 @@ export default function WeatherPage() {
   // Load all data on mount
   useEffect(() => {
     if (!projectId) return
-    weatherStore.loadScatterDiagram(projectId)
-    deckStore.loadProjectEquipment(projectId)
-    equipStore.loadEquipment()
+    void weatherStore.loadScatterDiagram(projectId)
+    void deckStore.loadProjectEquipment(projectId)
+    void equipStore.loadEquipment()
   }, [projectId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load analysis results for each equipment item (once deck items are known)
   useEffect(() => {
     for (const pe of deckStore.items) {
-      if (!analysisStore.results[pe.id]) analysisStore.loadResults(pe.id)
+      if (!analysisStore.results[pe.id]) void analysisStore.loadResults(pe.id)
     }
   }, [deckStore.items]) // eslint-disable-line react-hooks/exhaustive-deps
 

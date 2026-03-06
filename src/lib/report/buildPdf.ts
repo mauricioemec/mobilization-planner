@@ -262,7 +262,7 @@ export function buildPdf(data: ReportData, sections: ReportSections, images: Cap
     doc.addPage(); let y = 20
     hdr(doc, pm['equipment'])
     y = sec(doc, '2. EQUIPMENT LIST', y)
-    y = tbl(doc,
+    tbl(doc,
       [
         { header: 'Name', width: 50 },
         { header: 'Type', width: 25 },

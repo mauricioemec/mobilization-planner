@@ -47,7 +47,7 @@ function StaticDeckStage({
 
   return (
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    <Stage ref={(s: any) => { stageRef.current = s }} width={W} height={H}>
+    <Stage ref={(s: any) => { stageRef.current = s as KonvaStageRef }} width={W} height={H}>
       <Layer>
         <Rect x={0} y={0} width={W} height={H} fill="#dbeafe" />
         <Rect

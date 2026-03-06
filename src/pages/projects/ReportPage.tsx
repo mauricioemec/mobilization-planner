@@ -64,15 +64,15 @@ export default function ReportPage() {
 
   useEffect(() => {
     if (!projectId) return
-    deckStore.loadProjectEquipment(projectId)
-    equipStore.loadEquipment()
-    raoStore.loadRaos(projectId)
-    weatherStore.loadScatterDiagram(projectId)
+    void deckStore.loadProjectEquipment(projectId)
+    void equipStore.loadEquipment()
+    void raoStore.loadRaos(projectId)
+    void weatherStore.loadScatterDiagram(projectId)
   }, [projectId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     for (const pe of deckStore.items) {
-      if (!analysisStore.results[pe.id]) analysisStore.loadResults(pe.id)
+      if (!analysisStore.results[pe.id]) void analysisStore.loadResults(pe.id)
     }
   }, [deckStore.items]) // eslint-disable-line react-hooks/exhaustive-deps
 

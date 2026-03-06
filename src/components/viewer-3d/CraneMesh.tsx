@@ -38,7 +38,7 @@ function CylinderBetween({
       dir,
     )
     return { pos, quat, len }
-  }, [start, end]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [start, end])
 
   return (
     <mesh position={pos} quaternion={quat} castShadow>
@@ -57,9 +57,9 @@ export function CraneMesh({ vessel, activePe, viewMode }: Props) {
   // Choose active crane geometry based on viewMode and active equipment
   const useOverboard = (viewMode === 'overboard' || viewMode === 'both') && activePe?.crane_slew_overboard_deg != null
 
-  const slewDeg    = useOverboard ? (activePe!.crane_slew_overboard_deg ?? 0)    : (activePe?.crane_slew_deck_deg ?? 0)
-  const boomDeg    = useOverboard ? (activePe!.crane_boom_angle_overboard_deg ?? 30) : (activePe?.crane_boom_angle_deck_deg ?? 30)
-  const radiusM    = useOverboard ? (activePe!.crane_radius_overboard_m ?? 20)    : (activePe?.crane_radius_deck_m ?? 20)
+  const slewDeg    = useOverboard ? (activePe?.crane_slew_overboard_deg ?? 0)    : (activePe?.crane_slew_deck_deg ?? 0)
+  const boomDeg    = useOverboard ? (activePe?.crane_boom_angle_overboard_deg ?? 30) : (activePe?.crane_boom_angle_deck_deg ?? 30)
+  const radiusM    = useOverboard ? (activePe?.crane_radius_overboard_m ?? 20)    : (activePe?.crane_radius_deck_m ?? 20)
 
   const pedestalTop: [number, number, number] = [px, DECK_HEIGHT + ph, py]
   const hook = hookPosition(px, py, ph, radiusM, slewDeg, boomDeg, boomLen)
