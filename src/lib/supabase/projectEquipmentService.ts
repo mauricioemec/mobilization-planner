@@ -113,6 +113,30 @@ export async function updateEquipmentOverboard(
   }
 }
 
+/**
+ * Return a map of { projectId → equipment count } for the given project IDs.
+ * Single query; counts are accumulated in JS.
+ */
+export async function loadEquipmentCountsByProject(
+  projectIds: string[],
+): ServiceResult<Record<string, number>> {
+  if (projectIds.length === 0) return { data: {}, error: null }
+  try {
+    const { data, error } = await supabase
+      .from('project_equipment')
+      .select('project_id')
+      .in('project_id', projectIds)
+    if (error) return { data: null, error: error.message }
+    const counts: Record<string, number> = {}
+    for (const row of data ?? []) {
+      counts[row.project_id] = (counts[row.project_id] ?? 0) + 1
+    }
+    return { data: counts, error: null }
+  } catch {
+    return { data: null, error: 'Network error' }
+  }
+}
+
 /** Remove an equipment placement from a project (cascades to analysis results). */
 export async function removeEquipmentFromProject(id: string): ServiceResult<null> {
   try {
