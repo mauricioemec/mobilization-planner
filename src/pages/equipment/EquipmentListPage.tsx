@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Select } from '../../components/ui/select'
+import { Skeleton } from '../../components/ui/skeleton'
 import { loadEquipment, deleteEquipment } from '../../lib/supabase/equipmentService'
 import type { EquipmentLibrary, GeometryType } from '../../types/database'
 
@@ -36,7 +37,7 @@ export default function EquipmentListPage() {
   const [sortDir, setSortDir] = useState<SortDir>('asc')
 
   useEffect(() => {
-    loadEquipment().then(({ data, error: err }) => {
+    void loadEquipment().then(({ data, error: err }) => {
       if (err) setError(err)
       else setItems(data ?? [])
       setLoading(false)
@@ -78,10 +79,6 @@ export default function EquipmentListPage() {
       return
     }
     setItems((prev) => prev.filter((r) => r.id !== item.id))
-  }
-
-  if (loading) {
-    return <div className="flex h-full items-center justify-center text-sm text-gray-500">Loading…</div>
   }
 
   return (
@@ -135,7 +132,23 @@ export default function EquipmentListPage() {
 
       {/* Table */}
       <div className="flex-1 overflow-auto px-6 py-4">
-        {displayed.length === 0 ? (
+        {loading ? (
+          <table className="w-full text-sm">
+            <tbody>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <tr key={i} className="border-b">
+                  <td className="py-2.5 pr-4"><Skeleton className="h-4 w-40" /></td>
+                  <td className="py-2.5 pr-4"><Skeleton className="h-4 w-16" /></td>
+                  <td className="py-2.5 pr-4"><Skeleton className="h-4 w-10" /></td>
+                  <td className="py-2.5 pr-4"><Skeleton className="h-4 w-10" /></td>
+                  <td className="py-2.5 pr-4"><Skeleton className="h-4 w-10" /></td>
+                  <td className="py-2.5 pr-4"><Skeleton className="h-4 w-12" /></td>
+                  <td className="py-2.5"><Skeleton className="h-6 w-20" /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : displayed.length === 0 ? (
           <div className="rounded-lg border-2 border-dashed border-gray-200 py-16 text-center text-sm text-gray-400">
             {items.length === 0
               ? 'No equipment defined yet. Click "+ New Equipment" to add your first item.'

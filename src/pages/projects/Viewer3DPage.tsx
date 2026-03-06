@@ -39,8 +39,8 @@ export default function Viewer3DPage() {
   // Load project equipment on mount
   useEffect(() => {
     if (!projectId) return
-    deckStore.loadProjectEquipment(projectId)
-    equipStore.loadEquipment()
+    void deckStore.loadProjectEquipment(projectId)
+    void equipStore.loadEquipment()
   }, [projectId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-select first placed equipment item

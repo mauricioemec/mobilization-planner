@@ -3,6 +3,7 @@ import { useDeckLayout } from '../../hooks/useDeckLayout'
 import { DeckCanvas, type DeckCanvasHandle } from '../../components/deck-layout/DeckCanvas'
 import { EquipmentPanel } from '../../components/deck-layout/EquipmentPanel'
 import { CranePanel } from '../../components/deck-layout/CranePanel'
+import { Skeleton } from '../../components/ui/skeleton'
 
 function ToolbarBtn({ onClick, label, active }: { onClick: () => void; label: string; active?: boolean }) {
   return (
@@ -27,7 +28,19 @@ export default function DeckLayoutPage() {
   } = useDeckLayout()
 
   if (isLoading) {
-    return <div className="flex h-full items-center justify-center text-sm text-gray-400">Loading deck…</div>
+    return (
+      <div className="flex h-full overflow-hidden">
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex shrink-0 items-center gap-2 border-b border-gray-200 bg-white px-4 py-2">
+            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-7 w-20" />)}
+          </div>
+          <Skeleton className="flex-1 m-4 rounded" />
+        </div>
+        <div className="w-64 shrink-0 border-l border-gray-200 bg-white p-4 space-y-3">
+          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+        </div>
+      </div>
+    )
   }
 
   if (!vessel) {

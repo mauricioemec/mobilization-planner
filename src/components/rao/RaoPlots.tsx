@@ -46,7 +46,7 @@ export function RaoPlots({ entries }: Props) {
       else row[fieldKey] = e.pitch_amplitude_deg_per_m
       periodMap.set(key, row)
     }
-    return [...periodMap.values()].sort((a, b) => (a.period as number) - (b.period as number))
+    return [...periodMap.values()].sort((a, b) => a.period - b.period)
   }, [entries, tab])
 
   const yLabel = tab === 'heave' ? 'Amplitude (m/m)' : 'Amplitude (deg/m)'

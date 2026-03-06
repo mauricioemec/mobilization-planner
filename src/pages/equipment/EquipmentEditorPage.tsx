@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
+import { Skeleton } from '../../components/ui/skeleton'
 import { EquipmentForm } from '../../components/equipment/EquipmentForm'
 import { Equipment3DPreview } from '../../components/equipment/Equipment3DPreview'
 import { CalculatedProperties } from '../../components/equipment/CalculatedProperties'
@@ -15,7 +16,29 @@ export default function EquipmentEditorPage() {
   } = useEquipmentEditor()
 
   if (loading) {
-    return <div className="flex h-full items-center justify-center text-sm text-gray-500">Loading…</div>
+    return (
+      <div className="flex h-full flex-col overflow-hidden">
+        <div className="flex shrink-0 items-center justify-between border-b border-gray-200 bg-white px-6 py-3">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-7 w-36" />
+            <Skeleton className="h-4 w-px" />
+            <Skeleton className="h-5 w-44" />
+          </div>
+          <Skeleton className="h-8 w-16" />
+        </div>
+        <div className="flex flex-1 overflow-hidden p-6 gap-6">
+          <div className="flex-1 space-y-3">
+            {Array.from({ length: 10 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-9 w-48" />
+              </div>
+            ))}
+          </div>
+          <Skeleton className="w-64 h-64 shrink-0" />
+        </div>
+      </div>
+    )
   }
 
   const title = isNew ? 'New Equipment' : (values.name || 'Equipment Editor')

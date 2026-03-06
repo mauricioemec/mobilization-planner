@@ -40,7 +40,7 @@ export function useEquipmentEditor() {
   useEffect(() => {
     if (!id) return
     setLoading(true)
-    loadEquipmentItem(id).then(({ data, error }) => {
+    void loadEquipmentItem(id).then(({ data, error }) => {
       if (error || !data) {
         setNotification({ msg: `Load failed: ${error ?? 'not found'}`, ok: false })
       } else {

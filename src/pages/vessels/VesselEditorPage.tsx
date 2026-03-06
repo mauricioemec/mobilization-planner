@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
+import { Skeleton } from '../../components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/tabs'
 import { DeckTab } from '../../components/vessels/DeckTab'
 import { CraneTab } from '../../components/vessels/CraneTab'
@@ -25,7 +26,34 @@ export default function VesselEditorPage() {
   } = useVesselEditor()
 
   if (loading) {
-    return <div className="flex h-full items-center justify-center text-sm text-gray-500">Loading…</div>
+    return (
+      <div className="flex h-full flex-col overflow-hidden">
+        <div className="flex shrink-0 items-center justify-between border-b border-gray-200 bg-white px-6 py-3">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-7 w-32" />
+            <Skeleton className="h-4 w-px" />
+            <Skeleton className="h-5 w-40" />
+          </div>
+          <Skeleton className="h-8 w-16" />
+        </div>
+        <div className="flex flex-1 overflow-hidden p-6 gap-6">
+          <div className="flex-1 space-y-4">
+            <div className="flex gap-2">
+              {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-8 w-24" />)}
+            </div>
+            <div className="space-y-3">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-9 w-48" />
+                </div>
+              ))}
+            </div>
+          </div>
+          <Skeleton className="w-72 h-64 shrink-0" />
+        </div>
+      </div>
+    )
   }
 
   const title = isNew ? 'New Vessel' : (values.name || 'Vessel Editor')

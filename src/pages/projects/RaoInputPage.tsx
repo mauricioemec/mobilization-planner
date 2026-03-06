@@ -5,6 +5,7 @@ import { useRaoStore } from '../../stores/useRaoStore'
 import { useDeckLayoutStore } from '../../stores/useDeckLayoutStore'
 import { useEquipmentStore } from '../../stores/useEquipmentStore'
 import { Button } from '../../components/ui/button'
+import { Skeleton } from '../../components/ui/skeleton'
 import { RaoTable, type RaoRow } from '../../components/rao/RaoTable'
 import { PasteDialog } from '../../components/rao/PasteDialog'
 import { RaoPlots } from '../../components/rao/RaoPlots'
@@ -57,9 +58,9 @@ export default function RaoInputPage() {
   // Load data on mount
   useEffect(() => {
     if (!projectId) return
-    raoStore.loadRaos(projectId)
-    deckStore.loadProjectEquipment(projectId)
-    equipStore.loadEquipment()
+    void raoStore.loadRaos(projectId)
+    void deckStore.loadProjectEquipment(projectId)
+    void equipStore.loadEquipment()
   }, [projectId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // When stored entries or direction changes, populate the table
@@ -132,7 +133,26 @@ export default function RaoInputPage() {
   }
 
   if (raoStore.isLoading) {
-    return <div className="flex h-full items-center justify-center text-sm text-gray-400">Loading RAO data…</div>
+    return (
+      <div className="overflow-auto p-6 space-y-6">
+        <Skeleton className="h-7 w-56" />
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="h-9 w-52" />
+            {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-8 w-24" />)}
+          </div>
+          <div className="rounded border border-gray-200 overflow-hidden">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="flex gap-2 border-b border-gray-100 px-3 py-2">
+                {Array.from({ length: 7 }).map((__, j) => <Skeleton key={j} className="h-4 flex-1" />)}
+              </div>
+            ))}
+          </div>
+        </div>
+        <Skeleton className="h-64 w-full rounded" />
+      </div>
+    )
   }
 
   return (
