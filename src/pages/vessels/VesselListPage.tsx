@@ -174,15 +174,15 @@ export default function VesselListPage() {
   return (
     <div className="flex flex-1 flex-col overflow-auto">
       {/* Page header */}
-      <div className="flex items-center justify-between border-b border-gray-200 bg-white px-8 py-4">
+      <div className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
         <h1 className="text-xl font-semibold text-gray-900">Vessel Library</h1>
         <Button onClick={() => navigate('/vessels/new')}>+ New Vessel</Button>
       </div>
 
-      <div className="p-8">
+      <div className="p-6">
         {/* Loading skeletons — 6 placeholders in the same grid layout */}
         {isLoading && (
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <VesselCardSkeleton key={i} />
             ))}
@@ -202,7 +202,7 @@ export default function VesselListPage() {
 
         {/* Vessel grid */}
         {!isLoading && vessels.length > 0 && (
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {vessels.map((vessel) => (
               <VesselCard
                 key={vessel.id}
