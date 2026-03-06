@@ -42,7 +42,7 @@ export default function ProjectWorkspace() {
         if (data) setEquipmentCount(data[id] ?? 0)
       })
     }
-  }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [id])
 
   const isLoaded = activeProject !== null && activeProject.id === id
   const vesselName = isLoaded ? (activeProject.vessel_snapshot?.vessel.name ?? '—') : null

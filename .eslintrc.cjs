@@ -8,7 +8,7 @@ module.exports = {
     'plugin:react-hooks/recommended',
     'plugin:react/jsx-runtime',
   ],
-  ignorePatterns: ['dist', '.eslintrc.cjs'],
+  ignorePatterns: ['dist', '.eslintrc.cjs', 'supabase/'],
   parser: '@typescript-eslint/parser',
   parserOptions: {
     ecmaVersion: 'latest',
@@ -51,11 +51,13 @@ module.exports = {
     {
       // Supabase JS client returns loosely-typed data; service files already
       // cast at the return boundary so unsafe-assignment warnings are spurious.
-      files: ['src/lib/supabase/*.ts'],
+      // Same applies to chat service which wraps supabase.functions.invoke.
+      files: ['src/lib/supabase/*.ts', 'src/lib/chat/*.ts'],
       rules: {
         '@typescript-eslint/no-unsafe-assignment': 'off',
         '@typescript-eslint/no-unsafe-return': 'off',
         '@typescript-eslint/no-unsafe-member-access': 'off',
+        '@typescript-eslint/no-unsafe-call': 'off',
       },
     },
   ],
