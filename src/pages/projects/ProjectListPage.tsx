@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
 import { useProjectStore } from '../../stores/useProjectStore'
 import { loadEquipmentCountsByProject } from '../../lib/supabase/projectEquipmentService'
+import { isDatabaseEmpty, seedDemoData } from '../../lib/supabase/seedService'
+import { resetAllData } from '../../lib/supabase/resetService'
 import type { Project, ProjectStatus } from '../../types/database'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -85,9 +87,15 @@ export default function ProjectListPage() {
   const navigate = useNavigate()
   const { projects, isLoading, error, loadProjects, deleteProject } = useProjectStore()
   const [counts, setCounts] = useState<Record<string, number>>({})
+  const [dbEmpty, setDbEmpty] = useState(false)
+  const [seeding, setSeeding] = useState(false)
+  const [resetting, setResetting] = useState(false)
+  const [resetConfirmText, setResetConfirmText] = useState('')
+  const [showResetInput, setShowResetInput] = useState(false)
 
   useEffect(() => {
     loadProjects()
+    isDatabaseEmpty().then(setDbEmpty)
   }, [loadProjects])
 
   useEffect(() => {
@@ -102,6 +110,37 @@ export default function ProjectListPage() {
       `Delete "${project.name}"?\n\nThis will permanently delete all equipment placements, RAOs, analysis results, and weather data for this project.`
     )) return
     await deleteProject(project.id)
+  }
+
+  async function handleSeed() {
+    setSeeding(true)
+    const result = await seedDemoData()
+    if (!result.ok) {
+      window.alert(`Seed failed: ${result.error}`)
+      setSeeding(false)
+      return
+    }
+    window.location.reload()
+  }
+
+  function handleResetClick() {
+    if (!window.confirm(
+      'Are you sure you want to delete ALL data?\n\nThis will permanently remove every vessel, equipment item, project, and all associated records.'
+    )) return
+    setShowResetInput(true)
+    setResetConfirmText('')
+  }
+
+  async function handleResetConfirmed() {
+    if (resetConfirmText !== 'DELETE') return
+    setResetting(true)
+    const result = await resetAllData()
+    if (!result.ok) {
+      window.alert(`Reset failed: ${result.error}`)
+      setResetting(false)
+      return
+    }
+    window.location.reload()
   }
 
   return (
@@ -122,6 +161,15 @@ export default function ProjectListPage() {
           <div className="flex h-64 flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-200 text-center">
             <p className="text-sm text-gray-500">No projects yet.</p>
             <p className="mt-1 text-xs text-gray-400">Click "+ New Project" to create your first operation.</p>
+            {dbEmpty && (
+              <Button
+                className="mt-4"
+                onClick={handleSeed}
+                disabled={seeding}
+              >
+                {seeding ? 'Loading Demo Data…' : 'Load Demo Data'}
+              </Button>
+            )}
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -136,6 +184,52 @@ export default function ProjectListPage() {
             ))}
           </div>
         )}
+
+        {/* ── Danger Zone ──────────────────────────────────────────────────── */}
+        <div className="mt-12 rounded-lg border border-red-200 bg-red-50/50 p-5">
+          <h3 className="text-sm font-semibold text-red-700">Danger Zone</h3>
+          <p className="mt-1 text-xs text-red-600">
+            Permanently delete all vessels, equipment, projects, and analysis data.
+          </p>
+
+          {!showResetInput ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="mt-3 border-red-300 text-red-600 hover:bg-red-100 hover:text-red-700"
+              onClick={handleResetClick}
+              disabled={resetting}
+            >
+              Reset All Data
+            </Button>
+          ) : (
+            <div className="mt-3 flex items-center gap-2">
+              <input
+                type="text"
+                className="rounded border border-red-300 px-2 py-1 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+                placeholder='Type "DELETE" to confirm'
+                value={resetConfirmText}
+                onChange={(e) => setResetConfirmText(e.target.value)}
+                autoFocus
+              />
+              <Button
+                size="sm"
+                className="bg-red-600 text-white hover:bg-red-700"
+                onClick={handleResetConfirmed}
+                disabled={resetConfirmText !== 'DELETE' || resetting}
+              >
+                {resetting ? 'Deleting…' : 'Confirm Delete'}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowResetInput(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
