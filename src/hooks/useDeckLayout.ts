@@ -3,12 +3,30 @@ import { useParams } from 'react-router-dom'
 import { useProjectStore } from '../stores/useProjectStore'
 import { useDeckLayoutStore } from '../stores/useDeckLayoutStore'
 import { useEquipmentStore } from '../stores/useEquipmentStore'
+import { useCraneStore, type CraneToggle } from '../stores/useCraneStore'
 import { validatePlacement, type ValidationResult, type EquipPlacement } from '../lib/calculations/deckValidation'
-import type { EquipmentLibrary } from '../types/database'
+import { calculateCraneRadius } from '../lib/calculations/crane/calculateCraneRadius'
+import { calculateBoomAngle } from '../lib/calculations/crane/calculateBoomAngle'
+import { interpolateCraneCurve } from '../lib/calculations/crane/interpolateCraneCurve'
+import { calculateSlewAngle, isSlewInRange } from '../lib/calculations/crane/calculateSlewAngle'
+import type { EquipmentLibrary, CraneCurvePoint } from '../types/database'
 
 const SNAP_SIZE = 0.5
 
 type UndoEntry = { id: string; x: number; y: number }
+
+export type CraneInfo = {
+  radiusM: number
+  boomAngleDeg: number | null
+  capacityT: number
+  weightT: number
+  utilizationPct: number
+  slewDeg: number
+  slewOk: boolean
+  reachOk: boolean
+  capacityOk: boolean
+  ok: boolean
+}
 
 export type DeckLayoutState = ReturnType<typeof useDeckLayout>
 
@@ -17,9 +35,11 @@ export function useDeckLayout() {
   const activeProject = useProjectStore((s) => s.activeProject)
   const deckStore = useDeckLayoutStore()
   const equipStore = useEquipmentStore()
+  const craneStore = useCraneStore()
 
   const [showGrid, setShowGrid] = useState(true)
   const [snap, setSnap] = useState(false)
+  const [craneToggle, setCraneToggle] = useState<CraneToggle | 'both'>('deck')
   const undoStack = useRef<UndoEntry[]>([])
 
   // Load deck placements and equipment library on mount
@@ -48,6 +68,7 @@ export function useDeckLayout() {
   const vessel = activeProject?.vessel_snapshot?.vessel ?? null
   const barriers = activeProject?.vessel_snapshot?.barriers ?? []
   const zones = activeProject?.vessel_snapshot?.deck_load_zones ?? []
+  const craneCurve: CraneCurvePoint[] = activeProject?.vessel_snapshot?.crane_curve_points ?? []
 
   const libById = useMemo<Record<string, EquipmentLibrary>>(() => {
     const m: Record<string, EquipmentLibrary> = {}
@@ -74,6 +95,35 @@ export function useDeckLayout() {
     }
     return map
   }, [placements, vessel, barriers, zones])
+
+  // Compute crane info for the selected item
+  const computeCraneInfo = useCallback((targetX: number, targetY: number, weightT: number): CraneInfo | null => {
+    if (!vessel) return null
+    const radiusM = calculateCraneRadius(vessel.crane_pedestal_x, vessel.crane_pedestal_y, targetX, targetY)
+    const boomAngleDeg = calculateBoomAngle(radiusM, vessel.crane_boom_length_m)
+    const capacityT = interpolateCraneCurve(craneCurve, radiusM)
+    const slewDeg = calculateSlewAngle(vessel.crane_pedestal_x, vessel.crane_pedestal_y, targetX, targetY)
+    const slewOk = isSlewInRange(slewDeg, vessel.crane_slew_min_deg, vessel.crane_slew_max_deg)
+    const maxR = craneCurve.length > 0 ? craneCurve[craneCurve.length - 1].radius_m : vessel.crane_boom_length_m
+    const reachOk = radiusM <= maxR
+    const capacityOk = capacityT >= weightT
+    const utilizationPct = capacityT > 0 ? (weightT / capacityT) * 100 : 100
+    return { radiusM, boomAngleDeg, capacityT, weightT, utilizationPct, slewDeg, slewOk, reachOk, capacityOk, ok: slewOk && reachOk && capacityOk }
+  }, [vessel, craneCurve])
+
+  const selectedItem = deckStore.items.find((i) => i.id === deckStore.selectedEquipmentId)
+  const selectedEq = selectedItem ? libById[selectedItem.equipment_id] : null
+
+  const craneDeckInfo = useMemo<CraneInfo | null>(() => {
+    if (!selectedItem || !selectedEq) return null
+    return computeCraneInfo(selectedItem.deck_pos_x, selectedItem.deck_pos_y, selectedEq.dry_weight_t)
+  }, [selectedItem, selectedEq, computeCraneInfo])
+
+  const craneOverboardInfo = useMemo<CraneInfo | null>(() => {
+    if (!selectedItem || !selectedEq) return null
+    if (selectedItem.overboard_pos_x == null || selectedItem.overboard_pos_y == null) return null
+    return computeCraneInfo(selectedItem.overboard_pos_x, selectedItem.overboard_pos_y, selectedEq.dry_weight_t)
+  }, [selectedItem, selectedEq, computeCraneInfo])
 
   function snapCoord(v: number) {
     return snap ? Math.round(v / SNAP_SIZE) * SNAP_SIZE : v
@@ -113,8 +163,42 @@ export function useDeckLayout() {
     const eq = libById[deckStore.items.find((i) => i.id === id)?.equipment_id ?? '']
     const others = placements.filter((p) => p.id !== id)
     const vr = eq && vessel ? validatePlacement({ cx: x, cy: y, halfL: eq.length_m / 2, halfW: eq.width_m / 2, rotDeg: deckStore.items.find((i) => i.id === id)?.deck_rotation_deg ?? 0, weightT: eq.dry_weight_t }, vessel.deck_length_m, vessel.deck_width_m, barriers, zones, others) : null
-    await deckStore.updatePosition(id, { deck_pos_x: x, deck_pos_y: y, deck_load_ok: vr?.deckLoadOk ?? null })
-  }, [deckStore, libById, placements, vessel, barriers, zones, snap]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Compute crane data for deck position
+    const craneInfo = eq && vessel ? computeCraneInfo(x, y, eq.dry_weight_t) : null
+
+    await deckStore.updatePosition(id, {
+      deck_pos_x: x,
+      deck_pos_y: y,
+      deck_load_ok: vr?.deckLoadOk ?? null,
+      crane_radius_deck_m: craneInfo?.radiusM ?? null,
+      crane_slew_deck_deg: craneInfo?.slewDeg ?? null,
+      crane_boom_angle_deck_deg: craneInfo?.boomAngleDeg ?? null,
+      crane_capacity_deck_t: craneInfo?.capacityT ?? null,
+      capacity_check_deck_ok: craneInfo?.capacityOk ?? null,
+    })
+  }, [deckStore, libById, placements, vessel, barriers, zones, snap, computeCraneInfo]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleOverboardMove = useCallback(async (id: string, rawX: number, rawY: number) => {
+    const x = snapCoord(rawX)
+    const y = snapCoord(rawY)
+    const eq = libById[deckStore.items.find((i) => i.id === id)?.equipment_id ?? '']
+    const craneInfo = eq && vessel ? computeCraneInfo(x, y, eq.dry_weight_t) : null
+
+    await craneStore.updateOverboardPosition(id, {
+      overboard_pos_x: x,
+      overboard_pos_y: y,
+      crane_radius_overboard_m: craneInfo?.radiusM ?? null,
+      crane_slew_overboard_deg: craneInfo?.slewDeg ?? null,
+      crane_boom_angle_overboard_deg: craneInfo?.boomAngleDeg ?? null,
+      crane_capacity_overboard_t: craneInfo?.capacityT ?? null,
+      capacity_check_overboard_ok: craneInfo?.capacityOk ?? null,
+    })
+
+    // Reload items so UI reflects the persisted overboard position
+    const pid = deckStore.items[0]?.project_id
+    if (pid) deckStore.loadProjectEquipment(pid)
+  }, [deckStore, libById, vessel, snap, computeCraneInfo, craneStore]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleRotate = useCallback(async (id: string, deg: number) => {
     await deckStore.updateRotation(id, deg)
@@ -134,7 +218,7 @@ export function useDeckLayout() {
   }, [deckStore])
 
   return {
-    vessel, barriers, zones,
+    vessel, barriers, zones, craneCurve,
     placed: deckStore.items,
     library: equipStore.items,
     libById,
@@ -143,7 +227,10 @@ export function useDeckLayout() {
     setSelectedId: deckStore.setSelectedEquipment,
     showGrid, setShowGrid,
     snap, setSnap,
-    handleDrop, handleMove, handleRotate, handleRemove, handleUndo,
+    craneToggle, setCraneToggle,
+    craneDeckInfo, craneOverboardInfo,
+    selectedItem, selectedEq,
+    handleDrop, handleMove, handleOverboardMove, handleRotate, handleRemove, handleUndo,
     isLoading: deckStore.isLoading || equipStore.isLoading,
   }
 }

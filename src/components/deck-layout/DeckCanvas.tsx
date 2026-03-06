@@ -3,8 +3,12 @@ import { Stage, Layer, Rect, Ellipse, Circle, Line, Arrow, Text, Shape, Group } 
 import { useDeckTransform } from '../../hooks/useDeckTransform'
 import type { VesselBarrier, DeckLoadZone, CraneCurvePoint, Vessel, ProjectEquipment, EquipmentLibrary } from '../../types/database'
 import type { ValidationResult } from '../../lib/calculations/deckValidation'
+import type { CraneToggle } from '../../stores/useCraneStore'
+import type { CraneInfo } from '../../hooks/useDeckLayout'
 
 export type DeckCanvasHandle = { zoomIn: () => void; zoomOut: () => void; fit: () => void }
+
+const WATER_PAD = 20 // meters of water shown around deck
 
 type Props = {
   vessel: Vessel | null
@@ -12,13 +16,21 @@ type Props = {
   craneCurve: CraneCurvePoint[]; placed: ProjectEquipment[]
   libById: Record<string, EquipmentLibrary>; validationMap: Record<string, ValidationResult>
   selectedId: string | null; showGrid: boolean
+  craneToggle: CraneToggle | 'both'
+  craneDeckInfo: CraneInfo | null
+  craneOverboardInfo: CraneInfo | null
   onDrop: (equipId: string, wx: number, wy: number) => void
   onMove: (id: string, wx: number, wy: number) => void
+  onOverboardMove: (id: string, wx: number, wy: number) => void
   onSelect: (id: string | null) => void
 }
 
 export const DeckCanvas = forwardRef<DeckCanvasHandle, Props>(function DeckCanvas(props, ref) {
-  const { vessel, barriers, zones, craneCurve, placed, libById, validationMap, selectedId, showGrid, onDrop, onMove, onSelect } = props
+  const {
+    vessel, barriers, zones, craneCurve, placed, libById, validationMap,
+    selectedId, showGrid, craneToggle, craneDeckInfo, craneOverboardInfo,
+    onDrop, onMove, onOverboardMove, onSelect,
+  } = props
   const deckL = vessel?.deck_length_m ?? 0
   const deckW = vessel?.deck_width_m ?? 0
   const { containerRef, stageRef, size, tf, handleWheel } = useDeckTransform(deckL, deckW)
@@ -64,6 +76,17 @@ export const DeckCanvas = forwardRef<DeckCanvasHandle, Props>(function DeckCanva
   const sMin = vessel?.crane_slew_min_deg ?? 0
   const sMax = vessel?.crane_slew_max_deg ?? 360
 
+  const selectedItem = placed.find((p) => p.id === selectedId)
+  const showOverboard = craneToggle === 'overboard' || craneToggle === 'both'
+  // Active crane info for boom line rendering
+  const activeCraneInfo = craneToggle === 'overboard' ? craneOverboardInfo : craneDeckInfo
+  const activeTargetX = craneToggle === 'overboard'
+    ? (selectedItem?.overboard_pos_x ?? selectedItem?.deck_pos_x ?? 0)
+    : (selectedItem?.deck_pos_x ?? 0)
+  const activeTargetY = craneToggle === 'overboard'
+    ? (selectedItem?.overboard_pos_y ?? selectedItem?.deck_pos_y ?? 0)
+    : (selectedItem?.deck_pos_y ?? 0)
+
   function handleCanvasDrop(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault()
     const equipId = e.dataTransfer.getData('text/plain')
@@ -81,6 +104,15 @@ export const DeckCanvas = forwardRef<DeckCanvasHandle, Props>(function DeckCanva
       <Stage ref={stageRef} width={size.w} height={size.h} draggable onWheel={handleWheel}
         onClick={(e) => { if (e.target === e.target.getStage()) onSelect(null) }}>
         <Layer>
+          {/* Water area (light blue, extends 20m around deck) */}
+          {deckL > 0 && showOverboard && (
+            <Rect
+              x={wx(-WATER_PAD)} y={wy(deckW + WATER_PAD)}
+              width={(deckL + WATER_PAD * 2) * bs} height={(deckW + WATER_PAD * 2) * bs}
+              fill="rgba(147,197,253,0.3)" listening={false}
+            />
+          )}
+
           {/* Grid */}
           {gridLines.map((pts, i) => <Line key={i} points={pts} stroke="#e5e7eb" strokeWidth={0.5} listening={false} />)}
 
@@ -107,11 +139,13 @@ export const DeckCanvas = forwardRef<DeckCanvasHandle, Props>(function DeckCanva
             const vr = validationMap[pe.id]
             const bad = vr?.ok === false
             const sel = pe.id === selectedId
+            const isGhosted = sel && showOverboard
+            const opacity = isGhosted ? 0.2 : 1
             const fill = bad ? 'rgba(239,68,68,0.55)' : 'rgba(34,197,94,0.55)'
             const stroke = sel ? '#2563eb' : bad ? '#dc2626' : '#16a34a'
             const sw = sel ? 2.5 : 1.5
             return (
-              <Group key={pe.id} x={cx} y={cy} rotation={pe.deck_rotation_deg} draggable
+              <Group key={pe.id} x={cx} y={cy} rotation={pe.deck_rotation_deg} draggable opacity={opacity}
                 onClick={() => onSelect(pe.id)}
                 onDragEnd={(e) => { onMove(pe.id, (e.target.x() - ox) / bs, deckW - (e.target.y() - oy) / bs) }}>
                 {eq.geometry_type === 'cylinder'
@@ -123,7 +157,83 @@ export const DeckCanvas = forwardRef<DeckCanvasHandle, Props>(function DeckCanva
             )
           })}
 
-          {/* Crane */}
+          {/* Overboard ghost for selected item */}
+          {selectedItem && showOverboard && (() => {
+            const eq = libById[selectedItem.equipment_id]; if (!eq) return null
+            const obX = selectedItem.overboard_pos_x
+            const obY = selectedItem.overboard_pos_y
+            const lPx = eq.length_m * bs; const wPx = eq.width_m * bs
+            const gx = obX != null ? wx(obX) : wx(pX)
+            const gy = obY != null ? wy(obY) : wy(-5)
+            const obOk = craneOverboardInfo?.ok !== false
+            const fill = obOk ? 'rgba(34,197,94,0.55)' : 'rgba(239,68,68,0.55)'
+            const stroke = obOk ? '#16a34a' : '#dc2626'
+            return (
+              <Group x={gx} y={gy} draggable
+                onDragEnd={(e) => {
+                  onOverboardMove(selectedItem.id, (e.target.x() - ox) / bs, deckW - (e.target.y() - oy) / bs)
+                }}>
+                {eq.geometry_type === 'cylinder'
+                  ? <Ellipse radiusX={lPx / 2} radiusY={wPx / 2} fill={fill} stroke={stroke} strokeWidth={2} dash={[6, 3]} />
+                  : <Rect x={-lPx / 2} y={-wPx / 2} width={lPx} height={wPx} fill={fill} stroke={stroke} strokeWidth={2} dash={[6, 3]} />}
+                <Text text={`OB: ${eq.name}`} fontSize={Math.max(6, Math.min(10, bs * 0.75))} fill="#1f2937" x={-lPx / 2 + 2} y={-wPx / 2 + 2} />
+              </Group>
+            )
+          })()}
+
+          {/* Crane boom line from pedestal to active target */}
+          {selectedId && activeCraneInfo && (
+            <>
+              <Line
+                points={[wx(pX), wy(pY), wx(activeTargetX), wy(activeTargetY)]}
+                stroke={activeCraneInfo.ok ? '#6b7280' : '#dc2626'}
+                strokeWidth={2}
+                listening={false}
+              />
+              <Text
+                x={(wx(pX) + wx(activeTargetX)) / 2 + 4}
+                y={(wy(pY) + wy(activeTargetY)) / 2 - 12}
+                text={`R = ${activeCraneInfo.radiusM.toFixed(1)}m`}
+                fontSize={fz}
+                fill="#374151"
+                listening={false}
+              />
+              <Shape
+                x={wx(pX)} y={wy(pY)}
+                stroke={activeCraneInfo.capacityOk ? '#16a34a' : '#dc2626'}
+                strokeWidth={1.5}
+                dash={[4, 3]}
+                listening={false}
+                sceneFunc={(ctx, shape) => {
+                  const r = activeCraneInfo.radiusM * bs
+                  ctx.beginPath()
+                  ctx.arc(0, 0, r, 0, 2 * Math.PI, false)
+                  ctx.strokeShape(shape)
+                }}
+              />
+              <Text
+                x={wx(pX) + activeCraneInfo.radiusM * bs + 4}
+                y={wy(pY) - 12}
+                text={`${activeCraneInfo.capacityT.toFixed(0)}t`}
+                fontSize={fz}
+                fill={activeCraneInfo.capacityOk ? '#16a34a' : '#dc2626'}
+                listening={false}
+              />
+            </>
+          )}
+
+          {/* "Both" mode: dashed path between deck and overboard positions */}
+          {craneToggle === 'both' && selectedItem && selectedItem.overboard_pos_x != null && selectedItem.overboard_pos_y != null && (
+            <Line
+              points={[wx(selectedItem.deck_pos_x), wy(selectedItem.deck_pos_y), wx(selectedItem.overboard_pos_x), wy(selectedItem.overboard_pos_y)]}
+              stroke="#6366f1"
+              strokeWidth={1.5}
+              dash={[8, 4]}
+              listening={false}
+            />
+          )}
+
+          {/* Crane pedestal and envelope */}
           {deckL > 0 && <>
             {maxR > 0 && <Shape x={wx(pX)} y={wy(pY)} stroke="#111827" strokeWidth={1.5} dash={[6, 4]} listening={false}
               sceneFunc={(ctx, shape) => {

@@ -1,8 +1,8 @@
 import { useRef } from 'react'
 import { useDeckLayout } from '../../hooks/useDeckLayout'
-import { useProjectStore } from '../../stores/useProjectStore'
 import { DeckCanvas, type DeckCanvasHandle } from '../../components/deck-layout/DeckCanvas'
 import { EquipmentPanel } from '../../components/deck-layout/EquipmentPanel'
+import { CranePanel } from '../../components/deck-layout/CranePanel'
 
 function ToolbarBtn({ onClick, label, active }: { onClick: () => void; label: string; active?: boolean }) {
   return (
@@ -17,15 +17,14 @@ function ToolbarBtn({ onClick, label, active }: { onClick: () => void; label: st
 
 export default function DeckLayoutPage() {
   const canvasRef = useRef<DeckCanvasHandle>(null)
-  const activeProject = useProjectStore((s) => s.activeProject)
   const {
-    vessel, barriers, zones, placed, library, libById, validationMap,
+    vessel, barriers, zones, craneCurve, placed, library, libById, validationMap,
     selectedId, setSelectedId, showGrid, setShowGrid, snap, setSnap,
-    handleDrop, handleMove, handleRotate, handleRemove, isLoading,
+    craneToggle, setCraneToggle,
+    craneDeckInfo, craneOverboardInfo,
+    selectedItem, selectedEq,
+    handleDrop, handleMove, handleOverboardMove, handleRotate, handleRemove, isLoading,
   } = useDeckLayout()
-
-  const snapshot = activeProject?.vessel_snapshot
-  const craneCurve = snapshot?.crane_curve_points ?? []
 
   if (isLoading) {
     return <div className="flex h-full items-center justify-center text-sm text-gray-400">Loading deck…</div>
@@ -52,8 +51,12 @@ export default function DeckLayoutPage() {
             validationMap={validationMap}
             selectedId={selectedId}
             showGrid={showGrid}
+            craneToggle={craneToggle}
+            craneDeckInfo={craneDeckInfo}
+            craneOverboardInfo={craneOverboardInfo}
             onDrop={handleDrop}
             onMove={handleMove}
+            onOverboardMove={handleOverboardMove}
             onSelect={(id) => setSelectedId(id)}
           />
 
@@ -73,7 +76,7 @@ export default function DeckLayoutPage() {
         </div>
 
         {/* Right panel — 280px */}
-        <aside className="w-[280px] shrink-0 overflow-hidden border-l border-gray-200 bg-white">
+        <aside className="w-[280px] shrink-0 overflow-y-auto border-l border-gray-200 bg-white">
           <EquipmentPanel
             library={library}
             placed={placed}
@@ -84,6 +87,21 @@ export default function DeckLayoutPage() {
             onRemove={handleRemove}
             onRotate={handleRotate}
           />
+
+          {/* Crane interaction panel — shown when an item is selected */}
+          {selectedItem && selectedEq && (
+            <div className="border-t border-gray-200">
+              <CranePanel
+                item={selectedItem}
+                equipment={selectedEq}
+                toggle={craneToggle}
+                onToggle={setCraneToggle}
+                deckInfo={craneDeckInfo}
+                overboardInfo={craneOverboardInfo}
+                onOverboardChange={handleOverboardMove}
+              />
+            </div>
+          )}
         </aside>
       </div>
     </div>
