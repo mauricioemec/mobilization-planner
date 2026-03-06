@@ -113,9 +113,10 @@ export default function ProjectOverviewPage() {
   const analyzedSet = new Set(analyzedIds)
 
   return (
-    <div className="overflow-auto p-6">
+    <div className="overflow-auto">
+      <div className="mx-auto max-w-[1400px] px-6 py-6">
       {/* Header */}
-      <div className="mb-6 flex items-start justify-between">
+      <div className="mb-6 flex items-start justify-between border-b border-gray-200 pb-4">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">{activeProject.name}</h1>
           {activeProject.description && (
@@ -213,6 +214,8 @@ export default function ProjectOverviewPage() {
           </table>
         )}
       </div>
+      </div>
     </div>
   )
 }
+

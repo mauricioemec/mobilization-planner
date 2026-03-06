@@ -156,9 +156,10 @@ export default function AnalysisPage() {
   )
 
   return (
-    <div className="overflow-auto p-6 space-y-5">
+    <div className="overflow-auto">
+      <div className="mx-auto max-w-[1400px] px-6 py-6 space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex items-center justify-between flex-wrap gap-3 border-b border-gray-200 pb-4">
         <h1 className="text-xl font-semibold text-gray-900">Analysis</h1>
         <Button variant="outline" size="sm" onClick={handleRunAll} disabled={eligibleItems.length === 0 || runner.state.isRunning || !!runAllProgress}>
           {runAllProgress ? `Running ${runAllProgress.done}/${runAllProgress.total}…` : 'Run All Equipment'}
@@ -219,6 +220,8 @@ export default function AnalysisPage() {
           libById={libById}
         />
       )}
+      </div>
     </div>
   )
 }
+
