@@ -846,7 +846,7 @@ Deno.serve(async (req) => {
       const candidate = geminiData.candidates?.[0]
       if (!candidate?.content) {
         return new Response(
-          JSON.stringify({ reply: 'No response from AI.', toolNotifications, rawToolResults }),
+          JSON.stringify({ response: 'No response from AI.', toolNotifications, rawToolResults }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         )
       }
@@ -858,7 +858,7 @@ Deno.serve(async (req) => {
         // Final text response — no more function calls
         const text = parts.find((p) => p.text)
         return new Response(
-          JSON.stringify({ reply: (text?.text as string) ?? '', toolNotifications, rawToolResults }),
+          JSON.stringify({ response: (text?.text as string) ?? '', toolNotifications, rawToolResults }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         )
       }
@@ -881,7 +881,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ reply: 'Max iterations reached.', toolNotifications, rawToolResults }),
+      JSON.stringify({ response: 'Max iterations reached.', toolNotifications, rawToolResults }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )
   } catch (err) {
