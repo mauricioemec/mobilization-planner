@@ -235,15 +235,17 @@ export async function seedDemoData(): Promise<SeedResult> {
     // ── Step 2: Barriers, zones, crane curves (parallel) ────────────────────
     console.log('[seed] Step 2: inserting barriers, zones, crane curves…')
 
-    const [errB1, errZ1, errC1, errB2, errZ2, errC2] = await Promise.all([
+    const [errB1, errZ1, errC1, errVR1, errB2, errZ2, errC2] = await Promise.all([
       insertMany('vessel_barrier', SEVEN_SEAS_BARRIERS.map((b) => ({ ...b, vessel_id: sevenSeas.id }))),
       insertMany('deck_load_zone', SEVEN_SEAS_ZONES.map((z) => ({ ...z, vessel_id: sevenSeas.id }))),
       insertMany('crane_curve_point', SEVEN_SEAS_CRANE.map((c) => ({ ...c, vessel_id: sevenSeas.id }))),
+      // Seed vessel-level RAOs for Seven Seas so the Vessel Editor RAO tab shows data
+      insertMany('vessel_rao_entry', RAO_ENTRIES.map((e) => ({ ...e, vessel_id: sevenSeas.id }))),
       insertMany('vessel_barrier', SKANDI_BARRIERS.map((b) => ({ ...b, vessel_id: skandi.id }))),
       insertMany('deck_load_zone', SKANDI_ZONES.map((z) => ({ ...z, vessel_id: skandi.id }))),
       insertMany('crane_curve_point', SKANDI_CRANE.map((c) => ({ ...c, vessel_id: skandi.id }))),
     ])
-    for (const err of [errB1, errZ1, errC1, errB2, errZ2, errC2]) {
+    for (const err of [errB1, errZ1, errC1, errVR1, errB2, errZ2, errC2]) {
       if (err) return { ok: false, error: err }
     }
     console.log('[seed] Vessel details inserted.')

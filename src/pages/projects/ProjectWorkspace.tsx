@@ -13,9 +13,7 @@ type SidebarLink = {
 const SIDEBAR_LINKS: SidebarLink[] = [
   { to: '.', label: 'Overview', end: true },
   { to: 'deck', label: 'Deck' },
-  { to: 'rao', label: 'RAO' },
   { to: 'analysis', label: 'Analysis' },
-  { to: 'weather', label: 'Weather' },
   { to: '3d', label: '3D' },
   { to: 'report', label: 'Report' },
 ]

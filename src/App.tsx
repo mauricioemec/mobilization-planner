@@ -15,9 +15,7 @@ import NewProjectPage from './pages/projects/NewProjectPage'
 import ProjectWorkspace from './pages/projects/ProjectWorkspace'
 import ProjectOverviewPage from './pages/projects/ProjectOverviewPage'
 import DeckLayoutPage from './pages/projects/DeckLayoutPage'
-import RaoInputPage from './pages/projects/RaoInputPage'
 import AnalysisPage from './pages/projects/AnalysisPage'
-import WeatherPage from './pages/projects/WeatherPage'
 import Viewer3DPage from './pages/projects/Viewer3DPage'
 import ReportPage from './pages/projects/ReportPage'
 
@@ -47,9 +45,7 @@ export default function App() {
           <Route path="projects/:id" element={<ProjectWorkspace />}>
             <Route index element={<ProjectOverviewPage />} />
             <Route path="deck" element={<DeckLayoutPage />} />
-            <Route path="rao" element={<RaoInputPage />} />
             <Route path="analysis" element={<AnalysisPage />} />
-            <Route path="weather" element={<WeatherPage />} />
             <Route path="3d" element={<Viewer3DPage />} />
             <Route path="report" element={<ReportPage />} />
           </Route>
