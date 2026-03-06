@@ -737,6 +737,48 @@ async function executeFunction(
   }
 }
 
+// ─── Tool notification builder ─────────────────────────────────────────────────
+
+function buildToolNotification(
+  name: string,
+  args: Record<string, unknown>,
+  result: Record<string, unknown>,
+): string {
+  const eq = (args.equipment_name as string) ?? ''
+  if (result.error) return `[Tool: ${name}] Error: ${result.error}`
+
+  switch (name) {
+    case 'get_project_summary':
+      return `[Tool: get_project_summary] Fetched project summary`
+    case 'get_equipment_details':
+      return `[Tool: get_equipment_details] Retrieved details for ${eq}`
+    case 'get_analysis_results':
+      return `[Tool: get_analysis_results] Retrieved analysis results for ${eq}`
+    case 'get_crane_capacity':
+      return `[Tool: get_crane_capacity] Retrieved crane capacity for ${eq}`
+    case 'get_sea_state_table':
+      return `[Tool: get_sea_state_table] Retrieved sea state table for ${eq}`
+    case 'update_equipment_weight':
+      return `[Tool: update_equipment_weight] Updated ${eq} weight to ${args.new_weight_t}t`
+    case 'update_equipment_dimensions':
+      return `[Tool: update_equipment_dimensions] Updated dimensions for ${eq}`
+    case 'move_equipment_on_deck':
+      return `[Tool: move_equipment_on_deck] Moved ${eq} to (${args.x}, ${args.y}) on deck`
+    case 'move_equipment_overboard':
+      return `[Tool: move_equipment_overboard] Set overboard position for ${eq}`
+    case 'run_splash_zone_analysis':
+      return `[Tool: run_splash_zone_analysis] Analysis complete for ${eq}: max Hs = ${result.max_hs_m ?? '?'}m, DAF = ${result.daf ?? '?'}`
+    case 'run_all_analysis': {
+      const total = result.total ?? 0
+      return `[Tool: run_all_analysis] Ran analysis for ${total} equipment item(s)`
+    }
+    case 'compare_scenarios':
+      return `[Tool: compare_scenarios] Compared ${(result.comparison as unknown[])?.length ?? 0} scenarios for ${eq}`
+    default:
+      return `[Tool: ${name}]`
+  }
+}
+
 // ─── Main handler ──────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
@@ -776,6 +818,10 @@ Deno.serve(async (req) => {
 
     const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
 
+    // Track tool calls made during this conversation turn
+    const toolNotifications: string[] = []
+    const rawToolResults: Array<{ name: string; result: Record<string, unknown> }> = []
+
     // ── Gemini function-calling loop ──────────────────────────────────────
     for (let iter = 0; iter < 10; iter++) {
       const geminiRes = await fetch(geminiEndpoint, {
@@ -799,9 +845,10 @@ Deno.serve(async (req) => {
       const geminiData = await geminiRes.json()
       const candidate = geminiData.candidates?.[0]
       if (!candidate?.content) {
-        return new Response(JSON.stringify({ response: 'No response from AI.' }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
+        return new Response(
+          JSON.stringify({ reply: 'No response from AI.', toolNotifications, rawToolResults }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        )
       }
 
       const parts: Array<Record<string, unknown>> = candidate.content.parts ?? []
@@ -810,14 +857,20 @@ Deno.serve(async (req) => {
       if (!fnCallPart) {
         // Final text response — no more function calls
         const text = parts.find((p) => p.text)
-        return new Response(JSON.stringify({ response: (text?.text as string) ?? '' }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
+        return new Response(
+          JSON.stringify({ reply: (text?.text as string) ?? '', toolNotifications, rawToolResults }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        )
       }
 
       // Execute the requested function
       const { name, args } = fnCallPart.functionCall as { name: string; args: Record<string, unknown> }
       const result = await executeFunction(name, args ?? {}, supabase, projectId)
+
+      // Build human-readable tool notification
+      const notification = buildToolNotification(name, args ?? {}, result)
+      toolNotifications.push(notification)
+      rawToolResults.push({ name, result })
 
       // Append model turn + function response to the conversation
       contents.push(candidate.content)
@@ -827,9 +880,10 @@ Deno.serve(async (req) => {
       })
     }
 
-    return new Response(JSON.stringify({ response: 'Max iterations reached.' }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+    return new Response(
+      JSON.stringify({ reply: 'Max iterations reached.', toolNotifications, rawToolResults }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    )
   } catch (err) {
     console.error('chat function error:', err)
     return new Response(
