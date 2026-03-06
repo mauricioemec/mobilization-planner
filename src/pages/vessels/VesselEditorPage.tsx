@@ -7,6 +7,7 @@ import { CraneTab } from '../../components/vessels/CraneTab'
 import { BarriersTab } from '../../components/vessels/BarriersTab'
 import { DeckLoadZonesTab } from '../../components/vessels/DeckLoadZonesTab'
 import { CraneCurveTab } from '../../components/vessels/CraneCurveTab'
+import { DeckPreviewCanvas } from '../../components/vessels/DeckPreviewCanvas'
 import { useVesselEditor } from '../../hooks/useVesselEditor'
 
 export default function VesselEditorPage() {
@@ -58,13 +59,14 @@ export default function VesselEditorPage() {
 
       {/* Split layout */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left panel — 40% — 2D preview placeholder */}
-        <div className="flex w-2/5 shrink-0 items-center justify-center border-r border-gray-200 bg-gray-50">
-          <div className="text-center text-sm text-gray-400">
-            <div className="mb-1 text-3xl">🗺</div>
-            <p className="font-medium">2D Deck Preview</p>
-            <p className="text-xs">Coming in next module</p>
-          </div>
+        {/* Left panel — 40% — 2D deck preview */}
+        <div className="w-2/5 shrink-0 border-r border-gray-200">
+          <DeckPreviewCanvas
+            values={values}
+            barriers={barriers}
+            zones={zones}
+            cranePoints={cranePoints}
+          />
         </div>
 
         {/* Right panel — 60% — tabbed form */}
