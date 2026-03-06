@@ -6,6 +6,7 @@ import { Input } from '../../components/ui/input'
 import { Textarea } from '../../components/ui/textarea'
 import { FormField } from '../../components/vessels/FormField'
 import { loadVessels } from '../../lib/supabase/vesselService'
+import { copyVesselRaosToProject } from '../../lib/supabase/raoService'
 import { useProjectStore } from '../../stores/useProjectStore'
 import { projectSchema } from '../../validation/schemas'
 import type { Vessel } from '../../types/database'
@@ -81,6 +82,9 @@ export default function NewProjectPage() {
       setSubmitError(storeError ?? 'Failed to create project.')
       return
     }
+
+    // Auto-copy vessel RAOs into the new project so Analysis page has RAO data immediately
+    await copyVesselRaosToProject(result.data.vessel_id, created.id)
 
     navigate(`/projects/${created.id}`)
   }

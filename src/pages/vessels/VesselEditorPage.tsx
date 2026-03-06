@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
 import { Skeleton } from '../../components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/tabs'
@@ -8,11 +8,13 @@ import { CraneTab } from '../../components/vessels/CraneTab'
 import { BarriersTab } from '../../components/vessels/BarriersTab'
 import { DeckLoadZonesTab } from '../../components/vessels/DeckLoadZonesTab'
 import { CraneCurveTab } from '../../components/vessels/CraneCurveTab'
+import { VesselRaoTab } from '../../components/vessels/VesselRaoTab'
 import { DeckPreviewCanvas } from '../../components/vessels/DeckPreviewCanvas'
 import { useVesselEditor } from '../../hooks/useVesselEditor'
 
 export default function VesselEditorPage() {
   const navigate = useNavigate()
+  const { id: vesselId } = useParams<{ id: string }>()
   const [activeTab, setActiveTab] = useState('deck')
 
   const {
@@ -106,6 +108,7 @@ export default function VesselEditorPage() {
               <TabsTrigger value="load-zones">Deck Load Zones</TabsTrigger>
               <TabsTrigger value="crane">Crane</TabsTrigger>
               <TabsTrigger value="crane-curve">Crane Curve</TabsTrigger>
+              <TabsTrigger value="rao">RAO</TabsTrigger>
             </TabsList>
 
             <div className="flex-1 overflow-auto">
@@ -133,6 +136,9 @@ export default function VesselEditorPage() {
               </TabsContent>
               <TabsContent value="crane-curve">
                 <CraneCurveTab rows={cranePoints} onChange={setCranePoints} />
+              </TabsContent>
+              <TabsContent value="rao">
+                <VesselRaoTab vesselId={vesselId ?? null} />
               </TabsContent>
             </div>
           </Tabs>

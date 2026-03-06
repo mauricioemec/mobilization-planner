@@ -10,6 +10,7 @@ import { InputSummary } from '../../components/analysis/InputSummary'
 import { HydroCard } from '../../components/analysis/HydroCard'
 import { ResultsCard } from '../../components/analysis/ResultsCard'
 import { SeaStateGrid, type GridCell } from '../../components/analysis/SeaStateGrid'
+import { WeatherSection } from '../../components/analysis/WeatherSection'
 import { useAnalysisRunner } from '../../components/analysis/useAnalysisRunner'
 import { dragCoefficient } from '../../lib/calculations/hydro/dragCoefficient'
 import { addedMassCoefficient } from '../../lib/calculations/hydro/addedMassCoefficient'
@@ -41,13 +42,11 @@ export default function AnalysisPage() {
     void raoStore.loadRaos(projectId)
   }, [projectId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Equipment with overboard positions
   const eligibleItems = useMemo(
     () => deckStore.items.filter((pe) => pe.overboard_pos_x != null && pe.crane_capacity_overboard_t != null && (pe.crane_capacity_overboard_t ?? 0) > 0),
     [deckStore.items],
   )
 
-  // Auto-select first on load
   useEffect(() => {
     if (!selectedPeId && eligibleItems.length > 0) setSelectedPeId(eligibleItems[0].id)
   }, [eligibleItems, selectedPeId])
@@ -61,7 +60,6 @@ export default function AnalysisPage() {
   const selectedPe = eligibleItems.find((pe) => pe.id === selectedPeId) ?? null
   const selectedEq = selectedPe ? libById[selectedPe.equipment_id] : null
 
-  // Load existing results when selection changes
   useEffect(() => {
     if (selectedPeId) {
       void analysisStore.loadResults(selectedPeId)
@@ -69,7 +67,6 @@ export default function AnalysisPage() {
     }
   }, [selectedPeId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Compute hydro coefficients from equipment geometry
   const hydro = useMemo(() => {
     if (!selectedEq) return null
     const dims = { length_m: selectedEq.length_m, width_m: selectedEq.width_m, height_m: selectedEq.height_m }
@@ -82,7 +79,6 @@ export default function AnalysisPage() {
     }
   }, [selectedEq])
 
-  // Compute crane tip motion from RAOs + crane geometry
   const craneTip = useMemo(() => {
     if (!vessel || !selectedPe || !selectedPe.crane_radius_overboard_m || !selectedPe.crane_boom_angle_overboard_deg) return null
     const tip = craneTipPosition(vessel.crane_pedestal_x, vessel.crane_pedestal_y, vessel.crane_pedestal_height_m, selectedPe.crane_radius_overboard_m, selectedPe.crane_slew_overboard_deg ?? 0, selectedPe.crane_boom_angle_overboard_deg, vessel.crane_boom_length_m)
@@ -110,8 +106,7 @@ export default function AnalysisPage() {
       crane_capacity_overboard_t: pe.crane_capacity_overboard_t,
     })
 
-    const worstDafRow = gridResult.cells.find((c) => c.hs_m === gridResult.max_hs_m) ?? gridResult.cells[0]
-
+    const worstRow = gridResult.cells.find((c) => c.hs_m === gridResult.max_hs_m) ?? gridResult.cells[0]
     const resultInsert: SplashZoneResultInsert = {
       project_equipment_id: pe.id,
       cd_x: cdVal.cd_x, cd_y: cdVal.cd_y, cd_z: cdVal.cd_z,
@@ -119,30 +114,25 @@ export default function AnalysisPage() {
       projected_area_x_m2: areasVal.area_x_m2, projected_area_y_m2: areasVal.area_y_m2, projected_area_z_m2: areasVal.area_z_m2,
       submerged_volume_m3: volumeVal,
       crane_tip_heave_m: ct.craneTipHeaveM, crane_tip_lateral_m: ct.craneTipLateralM,
-      daf: worstDafRow?.daf ?? 1,
-      max_hs_m: gridResult.max_hs_m,
+      daf: worstRow?.daf ?? 1, max_hs_m: gridResult.max_hs_m,
       calculated_at: new Date().toISOString(),
     }
-
     const limits: Omit<SeaStateLimitInsert, 'splash_zone_result_id'>[] = gridResult.cells.map((c) => ({
       hs_m: c.hs_m, tp_s: c.tp_s, is_feasible: c.is_feasible, utilization_pct: c.utilization_pct,
     }))
-
     await analysisStore.runAnalysis(resultInsert, limits)
     if (pe.id === selectedPeId) setLocalCells(gridResult.cells)
   }
 
   async function handleRunAll() {
-    const items = eligibleItems
-    setRunAllProgress({ done: 0, total: items.length })
-    for (let i = 0; i < items.length; i++) {
-      await runAnalysis(items[i])
-      setRunAllProgress({ done: i + 1, total: items.length })
+    setRunAllProgress({ done: 0, total: eligibleItems.length })
+    for (let i = 0; i < eligibleItems.length; i++) {
+      await runAnalysis(eligibleItems[i])
+      setRunAllProgress({ done: i + 1, total: eligibleItems.length })
     }
     setRunAllProgress(null)
   }
 
-  // Display cells: prefer freshly computed, fall back to stored
   const storedResult = selectedPeId ? analysisStore.results[selectedPeId] : null
   const storedLimits = storedResult ? (analysisStore.seaStateLimits[storedResult.id] ?? []) : []
   const displayCells: GridCell[] = localCells.length > 0
@@ -160,15 +150,19 @@ export default function AnalysisPage() {
   const noRaos = raoStore.entries.length === 0
   const canRun = selectedPe != null && selectedEq != null && !noRaos && !runner.state.isRunning
 
+  const analyzedItems = useMemo(
+    () => deckStore.items.filter((pe) => analysisStore.results[pe.id] != null),
+    [deckStore.items, analysisStore.results],
+  )
+
   return (
     <div className="overflow-auto p-6 space-y-5">
+      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-xl font-semibold text-gray-900">DNV Splash Zone Analysis</h1>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleRunAll} disabled={eligibleItems.length === 0 || runner.state.isRunning || !!runAllProgress}>
-            {runAllProgress ? `Running ${runAllProgress.done}/${runAllProgress.total}…` : 'Run All Equipment'}
-          </Button>
-        </div>
+        <h1 className="text-xl font-semibold text-gray-900">Analysis</h1>
+        <Button variant="outline" size="sm" onClick={handleRunAll} disabled={eligibleItems.length === 0 || runner.state.isRunning || !!runAllProgress}>
+          {runAllProgress ? `Running ${runAllProgress.done}/${runAllProgress.total}…` : 'Run All Equipment'}
+        </Button>
       </div>
 
       {/* Equipment selector */}
@@ -187,18 +181,17 @@ export default function AnalysisPage() {
         </Button>
       </div>
 
-      {/* Prerequisites warnings */}
-      {noRaos && <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">Input vessel RAOs on the RAO page before running analysis.</p>}
+      {/* Warnings / errors / progress */}
+      {noRaos && <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">Add vessel RAOs in the Vessel Editor (RAO tab) before running analysis.</p>}
       {runner.state.error && <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2">{runner.state.error}</p>}
       {analysisStore.error && <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2">{analysisStore.error}</p>}
-
-      {/* Progress bar */}
       {runner.state.isRunning && (
         <div className="h-1.5 bg-gray-200 rounded overflow-hidden">
           <div className="h-full bg-blue-500 transition-all duration-100" style={{ width: `${Math.round(runner.state.progress * 100)}%` }} />
         </div>
       )}
 
+      {/* Input summary + hydro coefficients */}
       {selectedEq && selectedPe && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <InputSummary eq={selectedEq} pe={selectedPe} craneTipHeaveM={craneTip?.craneTipHeaveM ?? storedResult?.crane_tip_heave_m ?? 0} craneTipLateralM={craneTip?.craneTipLateralM ?? storedResult?.crane_tip_lateral_m ?? 0} />
@@ -208,15 +201,24 @@ export default function AnalysisPage() {
         </div>
       )}
 
-      {displayCells.length > 0 && (
-        <ResultsCard maxHsM={maxHsM} daf={daf} maxUtilizationPct={maxUtil} />
-      )}
+      {/* Results card */}
+      {displayCells.length > 0 && <ResultsCard maxHsM={maxHsM} daf={daf} maxUtilizationPct={maxUtil} />}
 
+      {/* Sea state grid */}
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-gray-700">Sea State Operability Table</h2>
         <p className="text-xs text-gray-400">Tp (s) across columns, Hs (m) down rows. Values show utilization %.</p>
         <SeaStateGrid cells={displayCells} />
       </section>
+
+      {/* Weather window — scatter diagram + operability + overlay */}
+      {projectId && (
+        <WeatherSection
+          projectId={projectId}
+          analyzedItems={analyzedItems}
+          libById={libById}
+        />
+      )}
     </div>
   )
 }

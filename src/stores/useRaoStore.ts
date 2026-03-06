@@ -1,34 +1,36 @@
 import { create } from 'zustand'
-import type { RaoEntry, RaoEntryInsert } from '../types/database'
+import type { RaoEntry, RaoEntryInsert, VesselRaoEntry, VesselRaoEntryInsert } from '../types/database'
 import {
   loadRaoEntries,
   saveRaoEntries as persistRaoEntries,
+  loadVesselRaoEntries,
+  saveVesselRaoEntries as persistVesselRaoEntries,
 } from '../lib/supabase/raoService'
 
 type RaoState = {
+  // ── Project RAO entries (used by Analysis page for crane tip calc) ───────────
   entries: RaoEntry[]
   isLoading: boolean
   isSaving: boolean
   error: string | null
 
-  /**
-   * Load all RAO entries for a project.
-   * Ordered by wave_direction_deg then wave_period_s.
-   */
   loadRaos: (projectId: string) => Promise<void>
-  /**
-   * Replace all RAO entries for a project with the provided array.
-   * Used when the user submits the full RAO table (e.g. CSV import or manual entry).
-   */
-  saveRaos: (
-    projectId: string,
-    entries: Omit<RaoEntryInsert, 'project_id'>[],
-  ) => Promise<void>
-  /** Clear in-memory RAO entries (e.g. when navigating away from a project). */
+  saveRaos: (projectId: string, entries: Omit<RaoEntryInsert, 'project_id'>[]) => Promise<void>
   clearRaos: () => void
+
+  // ── Vessel RAO entries (used by Vessel Editor RAO tab) ───────────────────────
+  vesselEntries: VesselRaoEntry[]
+  isVesselLoading: boolean
+  isVesselSaving: boolean
+  vesselError: string | null
+
+  loadVesselRaos: (vesselId: string) => Promise<void>
+  saveVesselRaos: (vesselId: string, entries: Omit<VesselRaoEntryInsert, 'vessel_id'>[]) => Promise<void>
+  clearVesselRaos: () => void
 }
 
 export const useRaoStore = create<RaoState>((set) => ({
+  // ── Project RAO ──────────────────────────────────────────────────────────────
   entries: [],
   isLoading: false,
   isSaving: false,
@@ -56,5 +58,35 @@ export const useRaoStore = create<RaoState>((set) => ({
 
   clearRaos: () => {
     set({ entries: [], error: null })
+  },
+
+  // ── Vessel RAO ───────────────────────────────────────────────────────────────
+  vesselEntries: [],
+  isVesselLoading: false,
+  isVesselSaving: false,
+  vesselError: null,
+
+  loadVesselRaos: async (vesselId) => {
+    set({ isVesselLoading: true, vesselError: null })
+    const { data, error } = await loadVesselRaoEntries(vesselId)
+    if (error) {
+      set({ isVesselLoading: false, vesselError: error })
+      return
+    }
+    set({ vesselEntries: data ?? [], isVesselLoading: false })
+  },
+
+  saveVesselRaos: async (vesselId, entries) => {
+    set({ isVesselSaving: true, vesselError: null })
+    const { data, error } = await persistVesselRaoEntries(vesselId, entries)
+    if (error) {
+      set({ isVesselSaving: false, vesselError: error })
+      return
+    }
+    set({ vesselEntries: data ?? [], isVesselSaving: false })
+  },
+
+  clearVesselRaos: () => {
+    set({ vesselEntries: [], vesselError: null })
   },
 }))

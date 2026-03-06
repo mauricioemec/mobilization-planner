@@ -155,6 +155,24 @@ export interface ProjectEquipment {
 export type ProjectEquipmentInsert = Omit<ProjectEquipment, 'id' | 'created_at' | 'updated_at'>
 export type ProjectEquipmentUpdate = Partial<ProjectEquipmentInsert>
 
+// ─── Vessel RAO Entry ─────────────────────────────────────────────────────────
+
+export interface VesselRaoEntry {
+  id: string
+  vessel_id: string
+  wave_direction_deg: number
+  wave_period_s: number
+  heave_amplitude_m_per_m: number
+  heave_phase_deg: number
+  roll_amplitude_deg_per_m: number
+  roll_phase_deg: number
+  pitch_amplitude_deg_per_m: number
+  pitch_phase_deg: number
+  created_at: string
+}
+
+export type VesselRaoEntryInsert = Omit<VesselRaoEntry, 'id' | 'created_at'>
+
 // ─── RAO Entry ────────────────────────────────────────────────────────────────
 
 export interface RaoEntry {
