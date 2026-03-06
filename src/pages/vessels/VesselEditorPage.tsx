@@ -6,6 +6,7 @@ import { DeckTab } from '../../components/vessels/DeckTab'
 import { CraneTab } from '../../components/vessels/CraneTab'
 import { BarriersTab } from '../../components/vessels/BarriersTab'
 import { DeckLoadZonesTab } from '../../components/vessels/DeckLoadZonesTab'
+import { CraneCurveTab } from '../../components/vessels/CraneCurveTab'
 import { useVesselEditor } from '../../hooks/useVesselEditor'
 
 export default function VesselEditorPage() {
@@ -17,6 +18,7 @@ export default function VesselEditorPage() {
     values, fieldErrors, handleChange,
     barriers, setBarriers,
     zones, setZones,
+    cranePoints, setCranePoints,
     deckLength, deckWidth,
     handleSave,
   } = useVesselEditor()
@@ -100,7 +102,7 @@ export default function VesselEditorPage() {
                 <CraneTab values={values} errors={fieldErrors} onChange={handleChange} />
               </TabsContent>
               <TabsContent value="crane-curve">
-                <div className="p-6 text-sm text-gray-400">Crane Curve editor — coming soon.</div>
+                <CraneCurveTab rows={cranePoints} onChange={setCranePoints} />
               </TabsContent>
             </div>
           </Tabs>
