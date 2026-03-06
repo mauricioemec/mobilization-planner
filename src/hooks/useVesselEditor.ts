@@ -4,9 +4,11 @@ import {
   loadVessel,
   loadVesselBarriers,
   loadDeckLoadZones,
+  loadCraneCurve,
   saveVessel,
   saveVesselBarriers,
   saveDeckLoadZones,
+  saveCraneCurve,
 } from '../lib/supabase/vesselService'
 import { vesselSchema } from '../validation/schemas'
 import type { Vessel, VesselType, CraneType } from '../types/database'
@@ -49,6 +51,13 @@ export type ZoneRow = {
   capacity_t_per_m2: string
 }
 
+export type CraneRow = {
+  _key: string
+  radius_m: string
+  capacity_t: string
+  boom_angle_deg: string
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const DEFAULT_VESSEL: VesselFormState = {
@@ -89,6 +98,15 @@ function validateBarrierRows(rows: BarrierRow[], deckLength: number, deckWidth: 
   })
 }
 
+function validateCraneRows(rows: CraneRow[]): string[] {
+  const errs: string[] = []
+  const valid = rows.filter((r) => parseFloat(r.radius_m) > 0 && parseFloat(r.capacity_t) > 0)
+  if (valid.length < 2) errs.push('Crane curve requires at least 2 points with radius > 0 and capacity > 0')
+  const radii = valid.map((r) => parseFloat(r.radius_m))
+  if (new Set(radii).size !== radii.length) errs.push('Crane curve has duplicate radius values')
+  return errs
+}
+
 function validateZoneRows(rows: ZoneRow[], deckLength: number, deckWidth: number): string[] {
   return rows.flatMap((z, i) => {
     const label = z.name.trim() || `Row ${i + 1}`
@@ -117,6 +135,7 @@ export function useVesselEditor() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [barriers, setBarriers] = useState<BarrierRow[]>([])
   const [zones, setZones] = useState<ZoneRow[]>([])
+  const [cranePoints, setCranePoints] = useState<CraneRow[]>([])
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [notification, setNotification] = useState<{ msg: string; ok: boolean } | null>(null)
@@ -124,8 +143,8 @@ export function useVesselEditor() {
   useEffect(() => {
     if (!id) return
     setLoading(true)
-    Promise.all([loadVessel(id), loadVesselBarriers(id), loadDeckLoadZones(id)]).then(
-      ([vessel, barrs, zns]) => {
+    Promise.all([loadVessel(id), loadVesselBarriers(id), loadDeckLoadZones(id), loadCraneCurve(id)]).then(
+      ([vessel, barrs, zns, curve]) => {
         if (vessel.error) { setNotification({ msg: `Load failed: ${vessel.error}`, ok: false }); setLoading(false); return }
         if (vessel.data) setValues(vesselToForm(vessel.data))
         if (barrs.data) setBarriers(barrs.data.map((b) => ({
@@ -139,6 +158,12 @@ export function useVesselEditor() {
           x_m: String(z.x_m), y_m: String(z.y_m),
           length_m: String(z.length_m), width_m: String(z.width_m),
           capacity_t_per_m2: String(z.capacity_t_per_m2),
+        })))
+        if (curve.data) setCranePoints(curve.data.map((p) => ({
+          _key: crypto.randomUUID(),
+          radius_m: String(p.radius_m),
+          capacity_t: String(p.capacity_t),
+          boom_angle_deg: p.boom_angle_deg != null ? String(p.boom_angle_deg) : '',
         })))
         setLoading(false)
       },
@@ -181,7 +206,11 @@ export function useVesselEditor() {
     }
 
     const { deck_length_m, deck_width_m } = result.data
-    const rowErrs = [...validateBarrierRows(barriers, deck_length_m, deck_width_m), ...validateZoneRows(zones, deck_length_m, deck_width_m)]
+    const rowErrs = [
+      ...validateBarrierRows(barriers, deck_length_m, deck_width_m),
+      ...validateZoneRows(zones, deck_length_m, deck_width_m),
+      ...validateCraneRows(cranePoints),
+    ]
     if (rowErrs.length > 0) {
       setNotification({ msg: rowErrs.join(' · '), ok: false })
       setSaving(false)
@@ -207,6 +236,16 @@ export function useVesselEditor() {
     })))
     if (zoneErr) { setNotification({ msg: `Load zones save failed: ${zoneErr}`, ok: false }); setSaving(false); return }
 
+    const sortedCranePoints = [...cranePoints]
+      .filter((p) => parseFloat(p.radius_m) > 0 && parseFloat(p.capacity_t) > 0)
+      .sort((a, b) => parseFloat(a.radius_m) - parseFloat(b.radius_m))
+    const { error: curveErr } = await saveCraneCurve(vid, sortedCranePoints.map((p) => ({
+      radius_m: parseFloat(p.radius_m),
+      capacity_t: parseFloat(p.capacity_t),
+      boom_angle_deg: p.boom_angle_deg ? parseFloat(p.boom_angle_deg) : null,
+    })))
+    if (curveErr) { setNotification({ msg: `Crane curve save failed: ${curveErr}`, ok: false }); setSaving(false); return }
+
     if (isNew) {
       navigate(`/vessels/${vid}`)
     } else {
@@ -221,6 +260,7 @@ export function useVesselEditor() {
     values, fieldErrors, handleChange,
     barriers, setBarriers,
     zones, setZones,
+    cranePoints, setCranePoints,
     deckLength: parseFloat(values.deck_length_m) || 0,
     deckWidth: parseFloat(values.deck_width_m) || 0,
     handleSave,
