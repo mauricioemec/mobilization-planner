@@ -23,6 +23,7 @@ export async function resetAllData(): Promise<ResetResult> {
     'crane_curve_point',
     'deck_load_zone',
     'vessel_barrier',
+    'vessel_rao_entry',
     'vessel',
     'equipment_library',
   ]
