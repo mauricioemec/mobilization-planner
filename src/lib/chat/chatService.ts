@@ -39,6 +39,8 @@ export async function sendMessage(
     error?: string
   }
 
+  console.log('Calling chat with projectId:', projectId)
+
   const invokePromise = supabase.functions.invoke<EdgeResponse>('chat', {
     body: { messages, projectId },
   })
@@ -49,6 +51,7 @@ export async function sendMessage(
 
   try {
     const { data, error } = await Promise.race([invokePromise, timeoutPromise])
+    console.log('Edge Function response:', { data, error })
 
     if (error) {
       const msg = String(error.message ?? error)
@@ -80,8 +83,22 @@ export async function sendMessage(
     }
 
     const responseText = data?.response ?? ''
+    if (responseText === '') {
+      // Edge Function returned no text. Surface a diagnostic error so the caller
+      // can display it rather than showing the generic "Could not process" message.
+      const hint = data
+        ? `Edge Function returned an empty response. toolNotifications=${JSON.stringify(data.toolNotifications)}`
+        : 'Edge Function returned no data.'
+      return {
+        text: null,
+        toolNotifications: data?.toolNotifications ?? [],
+        rawToolResults: data?.rawToolResults ?? [],
+        isTimeout: false,
+        error: hint,
+      }
+    }
     return {
-      text: responseText === '' ? null : responseText,
+      text: responseText,
       toolNotifications: data?.toolNotifications ?? [],
       rawToolResults: data?.rawToolResults ?? [],
       isTimeout: false,
