@@ -124,8 +124,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
     } else if (!reply) {
       newEntries.push({
         id: nextId(),
-        role: 'assistant',
-        content: 'Could not process this request, please rephrase.',
+        role: 'error',
+        content: 'Empty response from AI. Check browser console (F12 → Console) for Edge Function details.',
         timestamp: new Date(),
       })
     } else {
