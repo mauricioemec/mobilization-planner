@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { TP_VALUES, HS_VALUES } from '../../lib/calculations/dnv/generateSeaStateGrid'
 import type { ForceBreakdown } from '../../lib/calculations/dnv/seaStateFeasibility'
 
@@ -15,127 +14,106 @@ type Props = {
   cells: GridCell[]
 }
 
-type TooltipState = {
-  cell: GridCell
-  x: number
-  y: number
-} | null
-
-function cellColor(utilization_pct: number): string {
-  if (utilization_pct <= 70) return 'bg-green-200 text-green-900'
-  if (utilization_pct <= 90) return 'bg-yellow-200 text-yellow-900'
-  return 'bg-red-200 text-red-900'
+/** Maximum operable Hs for a given Tp: highest Hs row where is_feasible = true. */
+function maxHsForTp(cells: GridCell[], tp: number): number {
+  const feasible = cells.filter((c) => c.tp_s === tp && c.is_feasible)
+  if (feasible.length === 0) return 0
+  return Math.max(...feasible.map((c) => c.hs_m))
 }
 
-function toKN(n: number) {
-  return (n / 1000).toFixed(1)
+/** Utilization at the max operable Hs cell for tooltip detail. */
+function utilAtMaxHs(cells: GridCell[], tp: number, maxHs: number): number {
+  const cell = cells.find((c) => c.tp_s === tp && c.hs_m === maxHs)
+  return cell?.utilization_pct ?? 0
+}
+
+function cellColor(maxHs: number): string {
+  if (maxHs > 2.0) return 'bg-green-100 text-green-900 border-green-300'
+  if (maxHs >= 1.5) return 'bg-yellow-100 text-yellow-900 border-yellow-300'
+  if (maxHs > 0) return 'bg-red-100 text-red-900 border-red-300'
+  return 'bg-gray-100 text-gray-400 border-gray-200'
 }
 
 export function SeaStateGrid({ cells }: Props) {
-  const [tooltip, setTooltip] = useState<TooltipState>(null)
-
   if (cells.length === 0) {
     return (
       <div className="rounded border border-gray-200 px-4 py-8 text-center text-xs text-gray-400">
-        Run analysis to see the operability grid
+        Run analysis to see the operability table
       </div>
     )
   }
 
-  const byKey = new Map<string, GridCell>()
-  for (const c of cells) byKey.set(`${c.hs_m}_${c.tp_s}`, c)
-
   return (
-    <div className="relative">
+    <div className="space-y-3">
       <div className="overflow-x-auto">
-        <table className="text-[10px] border-collapse">
+        <table className="text-[11px] border-collapse w-full">
           <thead>
             <tr>
-              <th className="px-2 py-1 text-right text-gray-500 font-normal w-14">
-                Hs \ Tp
+              <th className="px-3 py-1.5 text-left text-gray-500 font-normal whitespace-nowrap w-28 border border-gray-200 bg-gray-50">
+                Tp (s)
               </th>
               {TP_VALUES.map((tp) => (
-                <th key={tp} className="px-1 py-1 text-center font-medium text-gray-600 w-10">
-                  {tp}s
+                <th
+                  key={tp}
+                  className="px-2 py-1.5 text-center font-medium text-gray-600 border border-gray-200 bg-gray-50 w-14"
+                >
+                  {tp}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {[...HS_VALUES].reverse().map((hs) => (
-              <tr key={hs}>
-                <td className="px-2 py-0.5 text-right font-medium text-gray-600">{hs.toFixed(2)}</td>
-                {TP_VALUES.map((tp) => {
-                  const cell = byKey.get(`${hs}_${tp}`)
-                  if (!cell) return <td key={tp} className="px-1 py-0.5 text-center bg-gray-100 w-10">—</td>
-                  return (
-                    <td
-                      key={tp}
-                      className={`px-1 py-0.5 text-center cursor-pointer select-none w-10 rounded-sm ${cellColor(cell.utilization_pct)}`}
-                      onMouseEnter={(e) => {
-                        const rect = (e.target as HTMLElement).getBoundingClientRect()
-                        setTooltip({ cell, x: rect.right + 8, y: rect.top })
-                      }}
-                      onMouseLeave={() => setTooltip(null)}
-                    >
-                      {cell.utilization_pct.toFixed(0)}%
-                    </td>
-                  )
-                })}
-              </tr>
-            ))}
+            <tr>
+              <td className="px-3 py-2 text-gray-500 font-medium border border-gray-200 bg-gray-50 whitespace-nowrap">
+                Max Hs (m)
+              </td>
+              {TP_VALUES.map((tp) => {
+                const maxHs = maxHsForTp(cells, tp)
+                const util = maxHs > 0 ? utilAtMaxHs(cells, tp, maxHs) : null
+                const label = maxHs > 0 ? maxHs.toFixed(2) : '—'
+                return (
+                  <td
+                    key={tp}
+                    title={util != null ? `Tp = ${tp} s | Max Hs = ${maxHs.toFixed(2)} m | Util = ${util.toFixed(1)}%` : `Tp = ${tp} s | Not operable`}
+                    className={`px-2 py-2 text-center font-semibold border cursor-default select-none ${cellColor(maxHs)}`}
+                  >
+                    {label}
+                  </td>
+                )
+              })}
+            </tr>
           </tbody>
         </table>
       </div>
 
       {/* Legend */}
-      <div className="flex gap-4 mt-2 text-[10px] text-gray-500">
-        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm bg-green-200" /> ≤70% Safe</span>
-        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm bg-yellow-200" /> 70–90% Limited</span>
-        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm bg-red-200" /> &gt;90% Not feasible</span>
+      <div className="flex flex-wrap gap-4 text-[10px] text-gray-500">
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-3 h-3 rounded-sm bg-green-100 border border-green-300" />
+          Hs &gt; 2.0 m — Good operability
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-3 h-3 rounded-sm bg-yellow-100 border border-yellow-300" />
+          1.5 – 2.0 m — Limited operability
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-3 h-3 rounded-sm bg-red-100 border border-red-300" />
+          &lt; 1.5 m — Restricted
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-3 h-3 rounded-sm bg-gray-100 border border-gray-200" />
+          — Not operable
+        </span>
       </div>
 
-      {/* Floating tooltip */}
-      {tooltip && (
-        <div
-          className="fixed z-50 bg-white border border-gray-300 rounded shadow-lg p-2.5 text-xs w-52 pointer-events-none"
-          style={{ left: Math.min(tooltip.x, window.innerWidth - 220), top: tooltip.y }}
-        >
-          <p className="font-semibold text-gray-800 mb-1">
-            Hs = {tooltip.cell.hs_m.toFixed(2)} m | Tp = {tooltip.cell.tp_s} s
-          </p>
-          <p className={`mb-1 font-medium ${tooltip.cell.is_feasible ? 'text-green-700' : 'text-red-600'}`}>
-            {tooltip.cell.is_feasible ? 'Feasible' : 'Not feasible'}
-            {' '}— {tooltip.cell.utilization_pct.toFixed(1)}%
-          </p>
-          {tooltip.cell.daf != null && (
-            <p className="text-gray-600">DAF: {tooltip.cell.daf.toFixed(3)}</p>
-          )}
-          {tooltip.cell.force_breakdown && (
-            <table className="mt-1 w-full">
-              <tbody className="text-[10px]">
-                <ForceRow label="Static" kn={tooltip.cell.force_breakdown.f_static_N} />
-                <ForceRow label="Drag" kn={tooltip.cell.force_breakdown.f_drag_N} />
-                <ForceRow label="Inertia" kn={tooltip.cell.force_breakdown.f_inertia_N} />
-                <ForceRow label="Slam" kn={tooltip.cell.force_breakdown.f_slam_N} />
-                <tr className="border-t border-gray-200 font-semibold">
-                  <td className="text-gray-700 pr-2">Total</td>
-                  <td className="text-right text-gray-800">{toKN(tooltip.cell.force_breakdown.f_total_N)} kN</td>
-                </tr>
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
+      {/* Hs reference context */}
+      <p className="text-[10px] text-gray-400">
+        Maximum significant wave height at which the lift is feasible across all periods at each Tp.
+        Hover a cell for utilization detail.
+      </p>
     </div>
   )
 }
 
-function ForceRow({ label, kn }: { label: string; kn: number }) {
-  return (
-    <tr>
-      <td className="text-gray-500 pr-2">{label}</td>
-      <td className="text-right text-gray-700">{toKN(kn)} kN</td>
-    </tr>
-  )
-}
+// Keep HS_VALUES exported for any downstream consumers
+export { HS_VALUES }

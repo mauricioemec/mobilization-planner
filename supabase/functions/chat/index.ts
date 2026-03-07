@@ -252,6 +252,7 @@ function calcCell(p: CellInput) {
   const omega = (2 * Math.PI) / Math.max(p.tp_s, 1)
   const eta_max = (p.hs_m * 1.86) / 2 // crest height (extreme value)
 
+  // Wave and crane-tip kinematics
   const v_water = omega * eta_max
   const v_crane = omega * p.crane_tip_heave_per_m * p.hs_m
   const v_rel = v_water + v_crane
@@ -260,9 +261,16 @@ function calcCell(p: CellInput) {
   const Fa = p.ca * RHO * p.volume_m3 * omega ** 2 * eta_max
   const Fs = 0.5 * RHO * p.cs * p.area_z_m2 * v_rel ** 2
 
+  // DAF per DNV-ST-N001: 1 + a_ct/g  (dynamic amplification of hook load)
+  // a_ct = crane-tip acceleration = RAO × Hs × ω²
+  const a_ct = p.crane_tip_heave_per_m * p.hs_m * omega * omega
+  const daf = 1 + a_ct / G
+
+  // Total dynamic hook load = W_static × DAF + hydrodynamic forces
   const W_N = p.dry_weight_t * 1000 * G
-  const daf = 1 + (Fd + Fa + Fs) / W_N
-  const utilization_pct = (p.dry_weight_t * daf) / p.crane_capacity_t * 100
+  const f_total_N = W_N * daf + Fd + Fa + Fs
+  const crane_capacity_N = p.crane_capacity_t * 1000 * G
+  const utilization_pct = (f_total_N / crane_capacity_N) * 100
 
   return { daf, utilization_pct, is_feasible: utilization_pct < 100 }
 }

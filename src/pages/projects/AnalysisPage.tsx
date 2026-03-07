@@ -208,7 +208,7 @@ export default function AnalysisPage() {
       {/* Sea state grid */}
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-gray-700">Sea State Operability Table</h2>
-        <p className="text-xs text-gray-400">Tp (s) across columns, Hs (m) down rows. Values show utilization %.</p>
+        <p className="text-xs text-gray-400">Maximum operable Hs for each peak period Tp (worst-case wave direction).</p>
         <SeaStateGrid cells={displayCells} />
       </section>
 
