@@ -24,15 +24,16 @@ const TIMEOUT_MS = 60_000
 
 /**
  * Sends a conversation to the Supabase Edge Function `/functions/v1/chat`.
- * Uses Promise.race for a 60-second timeout since supabase.functions.invoke
- * does not support AbortSignal.
+ * The Edge Function returns `{ response: string, toolNotifications, rawToolResults }`.
+ * Uses Promise.race for a 60-second timeout (supabase.functions.invoke has no AbortSignal).
  */
 export async function sendMessage(
   messages: ChatMessage[],
   projectId: string,
 ): Promise<SendMessageResult> {
   type EdgeResponse = {
-    reply: string
+    /** Main text reply from the AI. */
+    response: string
     toolNotifications: string[]
     rawToolResults: RawToolResult[]
     error?: string
@@ -50,8 +51,7 @@ export async function sendMessage(
     const { data, error } = await Promise.race([invokePromise, timeoutPromise])
 
     if (error) {
-      // Distinguish "function not found / not deployed" from other errors
-      const msg = error.message ?? ''
+      const msg = String(error.message ?? error)
       const isUnavailable =
         msg.includes('Failed to send') ||
         msg.includes('not found') ||
@@ -79,9 +79,9 @@ export async function sendMessage(
       }
     }
 
-    const reply = data?.reply ?? ''
+    const responseText = data?.response ?? ''
     return {
-      text: reply === '' ? null : reply,
+      text: responseText === '' ? null : responseText,
       toolNotifications: data?.toolNotifications ?? [],
       rawToolResults: data?.rawToolResults ?? [],
       isTimeout: false,
